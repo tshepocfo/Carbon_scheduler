@@ -30,10 +30,28 @@ def haversine(lat1, lon1, lat2, lon2):
 # Sample regions dict with lat, lon, location for pricing
 regions = {
     "us-east-1": {"lat": 38.9940541, "long": -77.4524237, "location": "US East (N. Virginia)"},
-    "us-east-2": {"lat": 39.96, "long": -83.0, "location": "US East (Ohio)"},
-    "us-west-1": {"lat": 37.4419, "long": -122.1430, "location": "US West (N. California)"},
-    "us-west-2": {"lat": 45.5234, "long": -122.6762, "location": "US West (Oregon)"},
-    "eu-west-1": {"lat": 53.350140, "long": -6.266155, "location": "EU (Ireland)"},
+    "us-east-2": {"lat": 40.0946354, "long": -82.7541337, "location": "US East (Ohio)"},
+    "us-west-1": {"lat": 37.443680, "long": -122.153664, "location": "US West (N. California)"},
+    "us-west-2": {"lat": 45.9174667, "long": -119.2684488, "location": "US West (Oregon)"},
+    "eu-west-1": {"lat": 53.4056545, "long": -6.224503, "location": "EU (Ireland)"},
+    "eu-west-2": {"lat": 51.5085036, "long": -0.0609266, "location": "EU (London)"},
+    "eu-west-3": {"lat": 48.6009709, "long": 2.2976644, "location": "EU (Paris)"},
+    "eu-central-1": {"lat": 50.0992094, "long": 8.6303932, "location": "EU (Frankfurt)"},
+    "sa-east-1": {"lat": -23.4925798, "long": -46.8105593, "location": "South America (Sao Paulo)"},
+    "ap-southeast-1": {"lat": 1.3218269, "long": 103.6930643, "location": "Asia Pacific (Singapore)"},
+    "ap-southeast-2": {"lat": -33.9117717, "long": 151.1907535, "location": "Asia Pacific (Sydney)"},
+    "ap-northeast-1": {"lat": 35.617436, "long": 139.7459176, "location": "Asia Pacific (Tokyo)"},
+    "ap-northeast-2": {"lat": 37.5616592, "long": 126.8736237, "location": "Asia Pacific (Seoul)"},
+    "ap-south-1": {"lat": 19.2425503, "long": 72.9667878, "location": "Asia Pacific (Mumbai)"},
+    "ca-central-1": {"lat": 45.5, "long": -73.6, "location": "Canada (Central)"},
+    "af-south-1": {"lat": -33.914651, "long": 18.3758801, "location": "Africa (Cape Town)"},
+    "eu-north-1": {"lat": 59.326242, "long": 17.8419717, "location": "EU (Stockholm)"},
+    "eu-south-1": {"lat": 45.4628328, "long": 9.1076927, "location": "EU (Milan)"},
+    "me-south-1": {"lat": 25.941298, "long": 50.3073907, "location": "Middle East (Bahrain)"},
+    "ap-east-1": {"lat": 22.2908475, "long": 114.2723379, "location": "Asia Pacific (Hong Kong)"},
+    "cn-north-1": {"lat": 39.8094478, "long": 116.5783234, "location": "China (Beijing)"},
+    "cn-northwest-1": {"lat": 37.5024418, "long": 105.1627193, "location": "China (Ningxia)"},
+    "eu-north-1": {"lat": 59.326242, "long": 17.8419717, "location": "EU (Stockholm)"},
     # Add more regions as needed
 }
 
