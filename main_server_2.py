@@ -85,17 +85,37 @@ def compute_metrics(company: str, workload: str, priorities: Dict[str, float], g
     pricing_location = region_info["location"]
     
     # Fetch carbon intensity
-    token = os.getenv('CO2_SIGNAL_TOKEN')
+        # Fetch carbon intensity from ElectricityMaps (free tier)
+    token = os.getenv('ELECTRICITYMAPS_TOKEN')
     if not token:
-        raise ValueError("CO2_SIGNAL_TOKEN not set")
-    url = f"https://api.co2signal.com/v1/latest?lon={lon}&lat={lat}"
-    headers = {'auth-token': token}
-    resp = requests.get(url, headers=headers)
+        raise ValueError("ELECTRICITYMAPS_TOKEN not set")
+    
+    url = f"https://api-access.electricitymaps.com/free-tier/carbon-intensity/latest"
+    headers = {"auth-token": token}
+    params = {"lat": lat, "lon": lon}
+    
+    resp = requests.get(url, headers=headers, params=params, timeout=10)
     if not resp.ok:
-        raise ValueError(f"Failed to fetch carbon intensity: {resp.text}")
-    data = resp.json()['data']
-    carbon_intensity = float(data['carbonIntensity'])
-    last_updated = data['datetime']
+        # Fallback: use zone-based lookup if lat/lon fails
+        zone_url = "https://api-access.electricitymaps.com/free-tier/zones"
+        zone_resp = requests.get(zone_url, headers=headers, timeout=10)
+        if zone_resp.ok:
+            zones = zone_resp.json()
+            # Simple nearest zone fallback (you can improve this)
+            fallback_zone = "SE"  # Sweden for eu-north-1
+            intensity_url = f"https://api-access.electricitymaps.com/free-tier/carbon-intensity/latest?zone={fallback_zone}"
+            resp = requests.get(intensity_url, headers=headers, timeout=10)
+            if not resp.ok:
+                raise ValueError(f"Failed to fetch carbon intensity: {resp.text}")
+            data = resp.json()
+            carbon_intensity = float(data['carbonIntensity'])
+            last_updated = data['datetime']
+        else:
+            raise ValueError(f"Failed to fetch carbon intensity: {resp.text}")
+    else:
+        data = resp.json()
+        carbon_intensity = float(data['carbonIntensity'])
+        last_updated = data['datetime']
     
     # Get instance_type and power
     instance_type = workload_to_instance.get(workload, "g4dn.xlarge")
