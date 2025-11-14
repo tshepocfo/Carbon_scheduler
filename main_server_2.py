@@ -1,0 +1,388 @@
+from __future__ import annotations
+import os
+import time
+import uuid
+from functools import wraps
+from typing import Dict, Optional
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS
+import boto3
+from datetime import datetime, timedelta
+import json
+import requests
+from math import radians, sin, cos, sqrt, atan2
+
+# Assuming utils.helpers are modified or stubbed. I'll provide a sample implementation for compute_metrics and others.
+# For completeness, I'll define stub functions here. In practice, move them to utils/helpers.py.
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371.0  # Earth radius in km
+    lat1_rad, lon1_rad = radians(lat1), radians(lon1)
+    lat2_rad, lon2_rad = radians(lat2), radians(lon2)
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    distance = R * c
+    return distance
+
+# Sample regions dict with lat, lon, location for pricing
+regions = {
+    "us-east-1": {"lat": 38.9940541, "long": -77.4524237, "location": "US East (N. Virginia)"},
+    "us-east-2": {"lat": 39.96, "long": -83.0, "location": "US East (Ohio)"},
+    "us-west-1": {"lat": 37.4419, "long": -122.1430, "location": "US West (N. California)"},
+    "us-west-2": {"lat": 45.5234, "long": -122.6762, "location": "US West (Oregon)"},
+    "eu-west-1": {"lat": 53.350140, "long": -6.266155, "location": "EU (Ireland)"},
+    # Add more regions as needed
+}
+
+# Sample workload to instance_type
+workload_to_instance = {
+    "inference": "g4dn.xlarge",
+    "training": "p3.2xlarge",
+    # Add more
+}
+
+# Instance power consumption estimate in kWh per hour
+instance_powers = {
+    "g4dn.xlarge": 0.2,
+    "p3.2xlarge": 0.4,
+}
+
+# Baseline carbon intensity for reduction calculation (gCO2e/kWh)
+baseline_intensity = 500.0
+
+# Default user location for latency (New York)
+user_lat = 40.7128
+user_lon = -74.0060
+
+def compute_metrics(company: str, workload: str, priorities: Dict[str, float], gpu_hours: float, region: str) -> Dict:
+    if region not in regions:
+        raise ValueError(f"Unknown region: {region}")
+    
+    region_info = regions[region]
+    lat = region_info["lat"]
+    lon = region_info["long"]
+    pricing_location = region_info["location"]
+    
+    # Fetch carbon intensity
+    token = os.getenv('CO2_SIGNAL_TOKEN')
+    if not token:
+        raise ValueError("CO2_SIGNAL_TOKEN not set")
+    url = f"https://api.co2signal.com/v1/latest?lon={lon}&lat={lat}"
+    headers = {'auth-token': token}
+    resp = requests.get(url, headers=headers)
+    if not resp.ok:
+        raise ValueError(f"Failed to fetch carbon intensity: {resp.text}")
+    data = resp.json()['data']
+    carbon_intensity = float(data['carbonIntensity'])
+    last_updated = data['datetime']
+    
+    # Get instance_type and power
+    instance_type = workload_to_instance.get(workload, "g4dn.xlarge")
+    power_kwh_per_hour = instance_powers.get(instance_type, 0.2)
+    
+    # Get on-demand price
+    pricing = boto3.client('pricing', region_name='us-east-1')
+    response = pricing.get_products(
+        ServiceCode='AmazonEC2',
+        Filters=[
+            {'Type': 'TERM_MATCH', 'Field': 'tenancy', 'Value': 'shared'},
+            {'Type': 'TERM_MATCH', 'Field': 'operatingSystem', 'Value': 'Linux'},
+            {'Type': 'TERM_MATCH', 'Field': 'preInstalledSw', 'Value': 'NA'},
+            {'Type': 'TERM_MATCH', 'Field': 'instanceType', 'Value': instance_type},
+            {'Type': 'TERM_MATCH', 'Field': 'location', 'Value': pricing_location},
+            {'Type': 'TERM_MATCH', 'Field': 'capacitystatus', 'Value': 'Used'},
+        ],
+        MaxResults=1
+    )
+    if not response['PriceList']:
+        raise ValueError("No on-demand price found")
+    prod = json.loads(response['PriceList'][0])
+    on_demand_data = prod['terms']['OnDemand']
+    price_id = list(on_demand_data.keys())[0]
+    dimension_id = list(on_demand_data[price_id]['priceDimensions'].keys())[0]
+    on_demand_price = float(on_demand_data[price_id]['priceDimensions'][dimension_id]['pricePerUnit']['USD'])
+    
+    # Get spot price (latest)
+    ec2 = boto3.client('ec2', region_name=region)
+    end = datetime.utcnow()
+    start = end - timedelta(hours=1)
+    response = ec2.describe_spot_price_history(
+        InstanceTypes=[instance_type],
+        ProductDescriptions=['Linux/UNIX'],
+        StartTime=start,
+        EndTime=end,
+        MaxResults=100
+    )
+    history = response['SpotPriceHistory']
+    if not history:
+        raise ValueError("No spot price history found")
+    history.sort(key=lambda x: x['Timestamp'], reverse=True)
+    spot_price = float(history[0]['SpotPrice'])
+    
+    # Calculate latency
+    distance = haversine(user_lat, user_lon, lat, lon)
+    latency_ms = (distance / 100) * 1.5  # Approximate RTT in ms
+    
+    # Calculations
+    saved_money = (on_demand_price - spot_price) * gpu_hours
+    emissions_g = carbon_intensity * power_kwh_per_hour * gpu_hours
+    emissions_kg = emissions_g / 1000
+    reduced_emissions_g = (baseline_intensity - carbon_intensity) * power_kwh_per_hour * gpu_hours
+    reduced_emissions_kg = reduced_emissions_g / 1000
+    
+    # Normalize for score (assumed max values)
+    max_saved_per_hour = 1.0  # Example $
+    max_reduced_per_hour = 300.0  # Example gCO2/h
+    max_latency = 200.0  # ms
+    normalized_saved = (on_demand_price - spot_price) / max_saved_per_hour
+    normalized_reduced = (baseline_intensity - carbon_intensity) / max_reduced_per_hour
+    normalized_speed = 1 - (latency_ms / max_latency)
+    
+    total_weight = sum(priorities.values())
+    w_cost = priorities.get('cost', 0) / total_weight if total_weight else 0.333
+    w_carbon = priorities.get('carbon', 0) / total_weight if total_weight else 0.333
+    w_speed = priorities.get('speed', 0) / total_weight if total_weight else 0.333
+    
+    score = w_cost * normalized_saved + w_carbon * normalized_reduced + w_speed * normalized_speed
+    
+    # Latency penalty
+    latency_penalty = latency_ms / max_latency
+    score -= latency_penalty * 0.1  # Penalty for high latency
+    
+    metrics = {
+        "company_name": company,
+        "workload_type": workload,
+        "priorities": priorities,
+        "gpu_hours": gpu_hours,
+        "cloud_region": region,
+        "spot_price_per_hour": spot_price,
+        "on_demand_price_per_hour": on_demand_price,
+        "saved_money": saved_money,
+        "carbon_intensity_gco2_kwh": carbon_intensity,
+        "last_updated": last_updated,
+        "emissions_kg_co2": emissions_kg,
+        "reduced_emissions_kg_co2": reduced_emissions_kg,
+        "latency_ms": latency_ms,
+        "score": score
+    }
+    return metrics
+
+# Stub for other helpers (implement as needed)
+def validate_input(data):
+    # Sample validation
+    required = ["company_name", "workload_type", "priorities", "gpu_hours", "cloud_region"]
+    for r in required:
+        if r not in data:
+            return f"Missing {r}", None
+    priorities = data["priorities"]
+    if not isinstance(priorities, dict) or set(priorities.keys()) != {"carbon", "cost", "speed"}:
+        return "Invalid priorities", None
+    return None, data
+
+def ensure_artifacts_dir():
+    dir = "artifacts"
+    os.makedirs(dir, exist_ok=True)
+    return dir
+
+def create_chart(gpu_hours, metrics, chart_path):
+    # Stub: Use matplotlib to create a bar chart
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    ax.bar(["Saved Money", "Reduced Emissions"], [metrics["saved_money"], metrics["reduced_emissions_kg_co2"]])
+    plt.savefig(chart_path)
+
+def create_pdf(title: str, metrics: Dict, chart_path: str, output_pdf_path: str, summary: Optional[str] = None) -> None:
+    """Create a beautiful PDF report."""
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.lib import colors
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('Title', parent=styles['Title'], fontSize=18, spaceAfter=20)
+    heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], fontSize=14, spaceAfter=10)
+    body_style = styles['BodyText']
+    
+    story = []
+    
+    # Title
+    story.append(Paragraph(title, title_style))
+    story.append(Spacer(1, 0.3 * inch))
+    
+    # Company and Details
+    story.append(Paragraph(f"Company: {metrics['company_name']}", heading_style))
+    story.append(Paragraph(f"Workload Type: {metrics['workload_type']}", body_style))
+    story.append(Paragraph(f"Cloud Region: {metrics['cloud_region']} ({regions[metrics['cloud_region']]['location']})", body_style))
+    story.append(Paragraph(f"GPU Hours: {metrics['gpu_hours']}", body_style))
+    story.append(Spacer(1, 0.2 * inch))
+    
+    # Metrics Table
+    data = [
+        ["Metric", "Value"],
+        ["Saved Money ($)", f"${metrics['saved_money']:.2f}"],
+        ["Emissions (kg CO2)", f"{metrics['emissions_kg_co2']:.2f}"],
+        ["Reduced Emissions (kg CO2)", f"{metrics['reduced_emissions_kg_co2']:.2f}"],
+        ["Latency (ms)", f"{metrics['latency_ms']:.2f}"],
+        ["Carbon Intensity (gCO2e/kWh)", f"{metrics['carbon_intensity_gco2_kwh']:.2f}"],
+        ["Last Updated", metrics['last_updated']],
+        ["Optimization Score", f"{metrics['score']:.2f}"],
+    ]
+    table = Table(data, colWidths=[3*inch, 3*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+    story.append(table)
+    story.append(Spacer(1, 0.3 * inch))
+    
+    # Chart
+    if os.path.exists(chart_path):
+        story.append(Paragraph("Visualization", heading_style))
+        story.append(Image(chart_path, width=6 * inch, height=4 * inch))
+        story.append(Spacer(1, 0.2 * inch))
+    
+    # Summary
+    if summary:
+        story.append(Paragraph("AI Summary", heading_style))
+        story.append(Paragraph(summary, body_style))
+    
+    doc = SimpleDocTemplate(output_pdf_path, pagesize=LETTER)
+    doc.build(story)
+
+
+def s3_upload(file_path, key, bucket, region):
+    # Stub: Upload to S3
+    s3 = boto3.client('s3', region_name=region)
+    s3.upload_file(file_path, bucket, key)
+    return f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
+
+# Rest of the original code
+load_dotenv()
+APP_VERSION = "1.0.0"
+app = Flask(__name__)
+# CORS configuration
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000, https://*.bubbleapps.io")
+allowed_origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=False)
+# In-memory rate limiting (per-IP)
+RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_MIN", "60"))
+_requests: Dict[str, int] = {}
+def rate_limiter(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
+        now = int(time.time())
+        window = now // 60
+        key = f"{ip}:{window}"
+        count = _requests.get(key, 0) + 1
+        _requests[key] = count
+        if count == 1:
+            _requests.pop(f"{ip}:{window-1}", None)
+        if count > RATE_LIMIT:
+            return jsonify({"ok": False, "error": "rate_limited", "detail": "Too many requests"}), 429
+        return func(*args, **kwargs)
+    return wrapper
+def require_api_key(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        required = os.getenv("API_KEY")
+        if not required:
+            return jsonify({"ok": False, "error": "server_misconfig", "detail": "API_KEY not set"}), 500
+        provided = request.headers.get("X-API-KEY")
+        if provided != required:
+            return jsonify({"ok": False, "error": "unauthorized", "detail": "Invalid API key"}), 401
+        return func(*args, **kwargs)
+    return wrapper
+@app.get("/health")
+@rate_limiter
+def health():
+    return jsonify({"ok": True, "version": APP_VERSION})
+@app.post("/calculate")
+@rate_limiter
+@require_api_key
+def calculate():
+    try:
+        data = request.get_json(force=True, silent=True)
+        if data is None:
+            return jsonify({"ok": False, "error": "invalid_json", "detail": "Expected JSON body"}), 400
+        err, clean = validate_input(data)
+        if err:
+            return jsonify({"ok": False, "error": "bad_request", "detail": err}), 400
+        # NEW: Extract user email
+        user_email = clean.get("user_email", "tshepotrustin@outlook.com")
+        company = clean["company_name"]
+        workload = clean["workload_type"]
+        priorities = clean["priorities"]
+        gpu_hours = clean["gpu_hours"]
+        region = clean["cloud_region"]
+        metrics = compute_metrics(company, workload, priorities, gpu_hours, region)
+
+        # NEW: Generate summary
+        summary = f"""
+        {metrics['company_name']} Optimization Report:
+        - Saved: ${metrics['saved_money']:.2f} using Spot Instances vs. On-Demand.
+        - Reduced CO₂: {metrics['reduced_emissions_kg_co2']:.2f} kg (intensity: {metrics['carbon_intensity_gco2_kwh']:.2f} gCO₂e/kWh).
+        - Latency: {metrics['latency_ms']:.1f} ms.
+        - Score: {metrics['score']:.2f}/1.0
+        """
+        # Prepare artifacts
+        artifacts_dir = ensure_artifacts_dir()
+        run_id = uuid.uuid4().hex[:12]
+        chart_name = f"{run_id}_chart.png"
+        pdf_name = f"{run_id}_report.pdf"
+        chart_path = os.path.join(artifacts_dir, chart_name)
+        pdf_path = os.path.join(artifacts_dir, pdf_name)
+        create_chart(gpu_hours, metrics, chart_path)
+        create_pdf("AI Report", metrics, chart_path, pdf_path, summary=summary)
+        # Optional S3 upload
+        if os.getenv("USE_S3", "false").lower() == "true":
+            bucket = os.getenv("S3_BUCKET")
+            if not bucket:
+                return jsonify({"ok": False, "error": "server_misconfig", "detail": "S3_BUCKET not set"}), 500
+            region = os.getenv("AWS_REGION")
+            chart_key = f"charts/{chart_name}"
+            pdf_key = f"reports/{pdf_name}"
+            chart_url = s3_upload(chart_path, chart_key, bucket, region)
+            pdf_url = s3_upload(pdf_path, pdf_key, bucket, region)
+        else:
+            chart_url = f"/artifact/{chart_name}"
+            pdf_url = f"/artifact/{pdf_name}"
+        resp: Dict[str, Optional[str] | Dict[str, float]] = {
+            "ok": True,
+            "metrics": metrics,
+            "summary": summary,
+            "chart_url": chart_url,
+            "pdf_url": pdf_url,
+        }
+        # Optional n8n webhook for email
+        n8n = os.getenv("N8N_WEBHOOK_URL")
+        if n8n:
+            try:
+                import requests
+                requests.post(n8n, json={
+                    "pdf_url": pdf_url,
+                    "metrics": metrics,
+                    "user_email": user_email
+                }, timeout=5)
+            except Exception:
+                pass
+        return jsonify(resp)
+    except Exception as e:
+        return jsonify({"ok": False, "error": "internal_error", "detail": str(e)}), 500
+@app.get("/artifact/<path:filename>")
+@rate_limiter
+def artifact(filename: str):
+    artifacts_dir = ensure_artifacts_dir()
+    return send_from_directory(artifacts_dir, filename, as_attachment=False)
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port)
