@@ -377,8 +377,7 @@ def calculate():
         region = clean["cloud_region"]
         metrics = compute_metrics(company, workload, priorities, gpu_hours, region)
 
-        # AI-Powered Formal Report using Google Gemini
-                # AI-Powered Formal Report using Google Gemini (WITH FULL DEBUG LOGS)
+        # AI-Powered Formal Report using Google Gemini (WITH FULL DEBUG LOGS)
         GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
         if GEMINI_API_KEY:
             try:
@@ -409,7 +408,7 @@ def calculate():
                 print(f"[DEBUG] Sending prompt to Gemini (first 200 chars): {prompt[:200]}...")  # DEBUG: Show prompt
 
                 response = requests.post(
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
                     headers={"Content-Type": "application/json"},
                     params={"key": GEMINI_API_KEY},
                     json={
