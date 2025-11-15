@@ -377,12 +377,12 @@ def calculate():
         region = clean["cloud_region"]
         metrics = compute_metrics(company, workload, priorities, gpu_hours, region)
 
-        # AI-Powered Formal Report using Google Gemini (WITH FULL DEBUG LOGS)
+        # AI-Powered Formal Report using Google Gemini (PRODUCTION + DEBUG)
         GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
         if GEMINI_API_KEY:
             try:
                 import requests
-                print(f"[DEBUG] GEMINI_API_KEY found: {GEMINI_API_KEY[:10]}...")  # DEBUG: Confirm key exists
+                print(f"[DEBUG] GEMINI_API_KEY found: {GEMINI_API_KEY[:10]}...")
 
                 prompt = f"""
                 Write a professional, detailed AI optimization report (200-350 words) for {metrics['company_name']}.
@@ -405,10 +405,10 @@ def calculate():
                 End with a positive, actionable closing.
                 """
 
-                print(f"[DEBUG] Sending prompt to Gemini (first 200 chars): {prompt[:200]}...")  # DEBUG: Show prompt
+                print(f"[DEBUG] Sending prompt to Gemini (first 200 chars): {prompt[:200]}...")
 
                 response = requests.post(
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent",
                     headers={"Content-Type": "application/json"},
                     params={"key": GEMINI_API_KEY},
                     json={
@@ -422,25 +422,46 @@ def calculate():
                     timeout=15
                 )
 
-                print(f"[DEBUG] Gemini HTTP Status: {response.status_code}")  # DEBUG: HTTP code
-                print(f"[DEBUG] Gemini Response Body: {response.text[:500]}")  # DEBUG: First 500 chars of response
+                print(f"[DEBUG] Gemini HTTP Status: {response.status_code}")
+                print(f"[DEBUG] Gemini Response Body: {response.text[:500]}")
 
                 if response.status_code == 200:
                     result = response.json()
-                    summary = result["candidates"][0]["content"]["parts"][0]["text"]
-                    summary = summary.replace("```markdown", "").replace("```", "").strip()
-                    print(f"[DEBUG] AI report generated successfully. Length: {len(summary)} chars")  # DEBUG: Success
+                    print(f"[DEBUG] Full Gemini response structure: {list(result.keys())}")
+
+                    if "candidates" in result and result["candidates"]:
+                        candidate = result["candidates"][0]
+                        if "content" in candidate:
+                            content = candidate["content"]
+                            if "parts" in content and content["parts"]:
+                                summary = content["parts"][0].get("text", "")
+                                if summary:
+                                    summary = summary.replace("```markdown", "").replace("```", "").strip()
+                                    print(f"[DEBUG] AI report generated successfully. Length: {len(summary)} chars")
+                                else:
+                                    summary = "No text in generated parts."
+                            else:
+                                summary = f"No 'parts' in content: {content}"
+                        else:
+                            summary = f"No 'content' in candidate: {candidate}"
+                    else:
+                        summary = f"No candidates in response: {result}"
                 else:
-                    error_msg = response.json().get("error", {}).get("message", "Unknown error")
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get("error", {}).get("message", "Unknown error")
+                    except:
+                        error_msg = response.text[:200]
                     summary = f"AI report failed (HTTP {response.status_code}): {error_msg}\n\nFallback: Saved £{metrics['saved_money']:.2f}, reduced CO₂ by {metrics['reduced_emissions_kg_co2']:.2f} kg."
-                    print(f"[DEBUG] AI report failed: {error_msg}")  # DEBUG: Failure
+                    print(f"[DEBUG] AI report failed: {error_msg}")
 
             except Exception as e:
                 summary = f"AI report exception: {str(e)}\n\nFallback: Saved £{metrics['saved_money']:.2f}, reduced CO₂ by {metrics['reduced_emissions_kg_co2']:.2f} kg."
-                print(f"[DEBUG] Exception in Gemini call: {str(e)}")  # DEBUG: Exception
+                print(f"[DEBUG] Exception in Gemini call: {str(e)}")
         else:
             summary = "GEMINI_API_KEY not set in environment. Using fallback."
-            print("[DEBUG] GEMINI_API_KEY missing")  # DEBUG: No key
+            print("[DEBUG] GEMINI_API_KEY missing")
+            
         # Prepare artifacts
         artifacts_dir = ensure_artifacts_dir()
         run_id = uuid.uuid4().hex[:12]
