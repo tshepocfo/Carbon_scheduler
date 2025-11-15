@@ -238,76 +238,200 @@ def ensure_artifacts_dir():
     os.makedirs(dir, exist_ok=True)
     return dir
 
-def create_chart(gpu_hours, metrics, chart_path):
-    # Stub: Use matplotlib to create a bar chart
+# =========================
+# ENHANCED PDF + CHART (HTML/CSS + PLAYWRIGHT)
+# Replaces old ReportLab + matplotlib
+# =========================
+import base64
+import shutil
+import textwrap
+
+def create_chart(gpu_hours, metrics) -> str:
+    """Generate chart → return base64 string"""
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots()
-    ax.bar(["Saved Money", "Reduced Emissions"], [metrics["saved_money"], metrics["reduced_emissions_kg_co2"]])
-    plt.savefig(chart_path)
+    import io
 
-def create_pdf(title: str, metrics: Dict, chart_path: str, output_pdf_path: str, summary: Optional[str] = None) -> None:
-    """Create a beautiful PDF report."""
-    from reportlab.lib.pagesizes import LETTER
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-    from reportlab.lib import colors
+    fig, ax = plt.subplots(figsize=(6, 4))
+    labels = ["Saved Money (£)", "CO₂ Reduced (kg)"]
+    values = [metrics["saved_money"], metrics["reduced_emissions_kg_co2"]]
+    colors = ['#7BE200', '#00C2FF']
+    ax.bar(labels, values, color=colors)
+    ax.set_title("Optimization Impact", color='white', fontsize=14)
+    ax.set_ylabel("Value", color='white')
+    ax.tick_params(colors='white')
+    fig.patch.set_facecolor('#0b0b0b')
+    ax.set_facecolor('#0b0b0b')
+    plt.tight_layout()
 
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('Title', parent=styles['Title'], fontSize=18, spaceAfter=20)
-    heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], fontSize=14, spaceAfter=10)
-    body_style = styles['BodyText']
-    
-    story = []
-    
-    # Title
-    story.append(Paragraph(title, title_style))
-    story.append(Spacer(1, 0.3 * inch))
-    
-    # Company and Details
-    story.append(Paragraph(f"Company: {metrics['company_name']}", heading_style))
-    story.append(Paragraph(f"Workload Type: {metrics['workload_type']}", body_style))
-    story.append(Paragraph(f"Cloud Region: {metrics['cloud_region']} ({regions[metrics['cloud_region']]['location']})", body_style))
-    story.append(Paragraph(f"GPU Hours: {metrics['gpu_hours']}", body_style))
-    story.append(Spacer(1, 0.2 * inch))
-    
-    # Metrics Table
-    data = [
-        ["Metric", "Value"],
-        ["Saved Money ($)", f"${metrics['saved_money']:.2f}"],
-        ["Emissions (kg CO2)", f"{metrics['emissions_kg_co2']:.2f}"],
-        ["Reduced Emissions (kg CO2)", f"{metrics['reduced_emissions_kg_co2']:.2f}"],
-        ["Latency (ms)", f"{metrics['latency_ms']:.2f}"],
-        ["Carbon Intensity (gCO2e/kWh)", f"{metrics['carbon_intensity_gco2_kwh']:.2f}"],
-        ["Last Updated", metrics['last_updated']],
-        ["Optimization Score", f"{metrics['score']:.2f}"],
-    ]
-    table = Table(data, colWidths=[3*inch, 3*inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
-    story.append(table)
-    story.append(Spacer(1, 0.3 * inch))
-    
-    # Chart
-    if os.path.exists(chart_path):
-        story.append(Paragraph("Visualization", heading_style))
-        story.append(Image(chart_path, width=6 * inch, height=4 * inch))
-        story.append(Spacer(1, 0.2 * inch))
-    
-    # Summary
-    if summary:
-        story.append(Paragraph("AI Summary", heading_style))
-        story.append(Paragraph(summary, body_style))
-    
-    doc = SimpleDocTemplate(output_pdf_path, pagesize=LETTER)
-    doc.build(story)
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png', facecolor='#0b0b0b', dpi=150)
+    buffer.seek(0)
+    img_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+    plt.close(fig)
+    return img_base64
+
+def _html_escape(s: str) -> str:
+    return (str(s)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#x27;"))
+
+def _ensure_dir(path: str) -> str:
+    os.makedirs(path, exist_ok=True)
+    return path
+
+def _safe_copy(src: Optional[str], dst: str) -> Optional[str]:
+    try:
+        if src and os.path.exists(src):
+            _ensure_dir(os.path.dirname(dst))
+            shutil.copyfile(src, dst)
+            return dst
+    except Exception:
+        pass
+    return None
+
+def _build_pdf_html(metrics: Dict, chart_base64: Optional[str], summary: Optional[str]) -> Dict[str, str]:
+    company = _html_escape(metrics.get('company_name', ''))
+    saved_money = f"{metrics.get('saved_money', 0.0):.2f}"
+    co2_reduced = f"{metrics.get('reduced_emissions_kg_co2', 0.0):.2f}"
+    latency_ms = f"{metrics.get('latency_ms', 0.0):.0f}"
+    score_val = f"{metrics.get('score', 0.0):.2f}"
+    region_code = metrics.get('cloud_region', '')
+    region_loc = regions.get(region_code, {}).get('location', region_code)
+    workload = _html_escape(str(metrics.get('workload_type', '')).title())
+    gpu_hours = _html_escape(str(metrics.get('gpu_hours', '')))
+    carbon_intensity = f"{metrics.get('carbon_intensity_gco2_kwh', 0.0):.1f}"
+    last_updated = _html_escape(metrics.get('last_updated', ''))
+
+    summary_html = _html_escape(summary or "").replace("\n", "<br/>")
+
+    chart_img = f'<img class="chart-img" src="data:image/png;base64,{chart_base64}" alt="Chart"/>' if chart_base64 else ""
+
+    css = textwrap.dedent(""" 
+        @page { size: 297mm 210mm; margin: 0; }
+        :root { --bg: #0b0b0b; --glass: rgba(255,255,255,0.02); --glass-border: rgba(255,255,255,0.18); --text: #ffffff; --muted: #bdbdbd; --accent: #7BE200; --footer: #0e0e0e; --divider: rgba(255,255,255,0.06); }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        html, body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', system-ui; width: 297mm; height: 210mm; overflow: hidden; }
+        .page { position: relative; width: 297mm; height: 210mm; display: flex; flex-direction: column; }
+        .container { padding: 16mm 18mm 0 18mm; flex: 1; }
+        .nav { display: flex; justify-content: space-between; margin-bottom: 10mm; }
+        .logo { display: flex; align-items: center; gap: 6mm; }
+        .logo .mark { width: 12mm; height: 12mm; border-radius: 3mm; background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08)); border: 1px solid var(--glass-border); display: grid; place-items: center; }
+        .logo .mark:before { content: "★"; color: #fff; font-size: 6mm; }
+        .logo .text { font-weight: 700; font-size: 5mm; }
+        .nav-menu { color: var(--muted); font-size: 3.5mm; }
+        .hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 10mm; }
+        .glass { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 6mm; box-shadow: 0 8px 40px rgba(0,0,0,0.45); }
+        .hero-left { padding: 12mm; display: flex; flex-direction: column; gap: 6mm; }
+        .headline { font-size: 18mm; font-weight: 700; line-height: 1.05; }
+        .sub { font-size: 4.8mm; color: var(--muted); }
+        .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 6mm; }
+        .stat { padding: 6mm; border-radius: 4mm; border: 1px solid var(--divider); background: rgba(255,255,255,0.02); }
+        .stat .label { color: var(--muted); font-size: 3.5mm; }
+        .stat .value { font-size: 7mm; font-weight: 600; color: var(--accent); }
+        .hero-right { position: relative; }
+        .hero-img { width: 100%; height: 100%; border-radius: 4.5mm; object-fit: cover; }
+        .overlap-card { position: absolute; left: -12%; top: 12%; width: 60%; z-index: 2; padding: 6mm; border-radius: 4mm; background: var(--glass); border: 1px solid var(--glass-border); }
+        .overlap-card h4 { margin: 0 0 2mm 0; font-size: 5mm; }
+        .meta { display: flex; gap: 6mm; color: var(--muted); font-size: 3.5mm; }
+        .features { margin-top: 10mm; display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
+        .feature { padding: 8mm; }
+        .feature h3 { font-size: 6mm; margin: 0 0 2mm 0; }
+        .feature p { color: var(--muted); font-size: 4mm; }
+        .feature .feature-img { width: 100%; height: 45mm; border-radius: 4mm; object-fit: cover; margin-top: 4mm; }
+        .contact { position: absolute; right: 18mm; top: 20mm; padding: 5mm 6mm; border-radius: 3.5mm; border: 1px solid var(--glass-border); background: var(--glass); font-size: 3.7mm; }
+        .divider { height: 1px; background: var(--divider); margin: 8mm 0; width: calc(100% - 36mm); margin-left: 18mm; }
+        .chart-wrap { margin-top: 8mm; padding: 0 18mm; }
+        .chart-title { font-size: 5mm; color: var(--muted); }
+        .chart-img { width: 120mm; height: auto; border-radius: 3mm; border: 1px solid var(--divider); }
+        .footer { background: var(--footer); margin-top: 8mm; padding: 8mm 18mm; border-top: 1px solid var(--divider); display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 10mm; }
+        .footer .brand { display: flex; gap: 5mm; align-items: center; }
+        .footer .brand .foot-mark { width: 10mm; height: 10mm; border-radius: 3mm; background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08)); border: 1px solid var(--glass-border); display: grid; place-items: center; }
+        .footer .brand .foot-mark:before { content: "★"; color: #fff; font-size: 5mm; }
+        .footer h5 { font-size: 4.2mm; color: #fff; }
+        .footer li { color: var(--muted); font-size: 3.7mm; }
+        .footer .social .dot { width: 7mm; height: 7mm; border-radius: 50%; background: var(--bg); border: 1px solid var(--divider); display: grid; place-items: center; font-size: 3.5mm; }
+        .copyright { color: var(--muted); font-size: 3.5mm; text-align: center; padding: 4mm 0; border-top: 1px solid var(--divider); width: calc(100% - 36mm); margin-left: 18mm; }
+        .ai-summary { margin-top: 6mm; padding: 6mm; border: 1px solid var(--divider); border-radius: 4mm; color: var(--muted); font-size: 3.8mm; line-height: 1.5; background: rgba(255,255,255,0.02); }
+    """).strip()
+
+    html = f"""<!doctype html>
+<html><head><meta charset="utf-8"><title>CarbonSight Report</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');{css}</style>
+</head><body><div class="page"><div class="container">
+<div class="nav"><div class="logo"><div class="mark"></div><div class="text">CARBONSIGHT SCHEDULER</div></div><div class="nav-menu">Solutions | About Us | Blog | Support</div></div>
+<div class="hero"><div class="glass hero-left">
+<div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
+<div class="sub">Precision scheduling aligned to carbon intensity and spot market efficiency.</div>
+<div class="stats">
+<div class="stat"><div class="label">Financial Savings</div><div class="value">£{saved_money}</div></div>
+<div class="stat"><div class="label">CO₂ Reduction</div><div class="value">{co2_reduced} kg</div></div>
+<div class="stat"><div class="label">Optimisation Score</div><div class="value">{score_val}/1.0</div></div>
+</div><div class="ai-summary">{summary_html}</div>
+</div><div class="hero-right"><img class="hero-img" src="assets/hero-datacenter.jpg" alt="Data Center"/>
+<div class="overlap-card"><h4>Deployment Meta</h4>
+<div class="meta"><div>Company: {company}</div><div>Region: {_html_escape(region_loc)}</div><div>Latency: {latency_ms} ms</div></div>
+<div class="meta" style="margin-top:3mm;"><div>Workload: {workload}</div><div>GPU Hours: {gpu_hours}</div><div>CI: {carbon_intensity} gCO₂e/kWh</div></div>
+<div class="meta" style="margin-top:3mm;"><div>Last Updated: {last_updated}</div></div>
+</div></div></div>
+<div class="features"><div class="glass feature"><h3>Carbon-Aware Orchestration</h3><p>Dynamically shifts workloads to lower carbon regions.</p></div>
+<div class="glass feature"><h3>Operator Experience</h3><p>Visual scheduling and real-time alerts.</p><img class="feature-img" src="assets/laptop-dark-ui.jpg" alt="UI"/></div></div>
+<div class="contact">Contact delivery team</div></div>
+<div class="divider"></div>
+<div class="chart-wrap"><div class="chart-title">Run Comparison</div>{chart_img}</div>
+<div class="footer"><div class="brand"><div class="foot-mark"></div><div><div style="font-weight:700;">CARBONSIGHT SCHEDULER</div><div style="color:var(--muted);font-size:3.7mm;">Smarter AI. Lower Cost. Less Carbon.</div></div></div>
+<div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li></ul></div>
+<div><h5>Company</h5><ul><li>About</li><li>Blog</li></ul></div>
+<div><h5>Connect</h5><div class="social"><div class="dot">in</div><div class="dot">x</div></div></div></div>
+<div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div></div></body></html>""".strip()
+
+    return {"html": html, "css": css}
+
+def _render_html_to_pdf(html_path: str, pdf_path: str):
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+            )
+            page = browser.new_page()
+            page.goto(f"file://{html_path}", wait_until="load")
+            page.pdf(path=pdf_path, format="A4", landscape=True, print_background=True, prefer_css_page_size=True, margin=0)
+            browser.close()
+    except Exception:
+        try:
+            from weasyprint import HTML
+            HTML(filename=html_path).write_pdf(pdf_path)
+        except Exception:
+            from reportlab.lib.pagesizes import landscape, A4
+            from reportlab.pdfgen import canvas
+            c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+            c.setFont("Helvetica", 12)
+            c.drawString(50, 550, "PDF generation failed. Install Playwright or WeasyPrint.")
+            c.save()
+
+def create_pdf(title: str, metrics: Dict, chart_base64: str, output_pdf_path: str, summary: Optional[str] = None) -> None:
+    built = _build_pdf_html(metrics, chart_base64, summary)
+    html_str = built["html"]
+
+    artifacts_dir = ensure_artifacts_dir()
+    run_id = uuid.uuid4().hex[:10]
+    workdir = os.path.join(artifacts_dir, f"report_{run_id}")
+    assets_dir = os.path.join(workdir, "assets")
+    _ensure_dir(workdir); _ensure_dir(assets_dir)
+
+    project_assets = os.path.join(os.getcwd(), "assets")
+    _safe_copy(os.path.join(project_assets, "hero-datacenter.jpg"), os.path.join(assets_dir, "hero-datacenter.jpg"))
+    _safe_copy(os.path.join(project_assets, "laptop-dark-ui.jpg"), os.path.join(assets_dir, "laptop-dark-ui.jpg"))
+
+    html_path = os.path.join(workdir, "index.html")
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_str)
+
+    _render_html_to_pdf(html_path, output_pdf_path)
 
 
 def s3_upload(file_path, key, bucket, region):
@@ -464,10 +588,10 @@ def calculate():
         run_id = uuid.uuid4().hex[:12]
         chart_name = f"{run_id}_chart.png"
         pdf_name = f"{run_id}_report.pdf"
-        chart_path = os.path.join(artifacts_dir, chart_name)
         pdf_path = os.path.join(artifacts_dir, pdf_name)
-        create_chart(gpu_hours, metrics, chart_path)
-        create_pdf("AI Report", metrics, chart_path, pdf_path, summary=summary)
+        chart_base64 = create_chart(gpu_hours, metrics)
+        create_pdf("AI Report", metrics, chart_base64, pdf_path, summary=summary)
+        
         # Optional S3 upload
         if os.getenv("USE_S3", "false").lower() == "true":
             bucket = os.getenv("S3_BUCKET")
