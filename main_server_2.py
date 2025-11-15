@@ -378,10 +378,13 @@ def calculate():
         metrics = compute_metrics(company, workload, priorities, gpu_hours, region)
 
         # AI-Powered Formal Report using Google Gemini
+                # AI-Powered Formal Report using Google Gemini (WITH FULL DEBUG LOGS)
         GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
         if GEMINI_API_KEY:
             try:
                 import requests
+                print(f"[DEBUG] GEMINI_API_KEY found: {GEMINI_API_KEY[:10]}...")  # DEBUG: Confirm key exists
+
                 prompt = f"""
                 Write a professional, detailed AI optimization report (200-350 words) for {metrics['company_name']}.
                 Use formal business language. Include these key results:
@@ -403,6 +406,8 @@ def calculate():
                 End with a positive, actionable closing.
                 """
 
+                print(f"[DEBUG] Sending prompt to Gemini (first 200 chars): {prompt[:200]}...")  # DEBUG: Show prompt
+
                 response = requests.post(
                     "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
                     headers={"Content-Type": "application/json"},
@@ -418,18 +423,25 @@ def calculate():
                     timeout=15
                 )
 
+                print(f"[DEBUG] Gemini HTTP Status: {response.status_code}")  # DEBUG: HTTP code
+                print(f"[DEBUG] Gemini Response Body: {response.text[:500]}")  # DEBUG: First 500 chars of response
+
                 if response.status_code == 200:
                     result = response.json()
                     summary = result["candidates"][0]["content"]["parts"][0]["text"]
-                    # Clean up any markdown artifacts
                     summary = summary.replace("```markdown", "").replace("```", "").strip()
+                    print(f"[DEBUG] AI report generated successfully. Length: {len(summary)} chars")  # DEBUG: Success
                 else:
-                    summary = f"AI report generation failed: {response.text}"
+                    error_msg = response.json().get("error", {}).get("message", "Unknown error")
+                    summary = f"AI report failed (HTTP {response.status_code}): {error_msg}\n\nFallback: Saved £{metrics['saved_money']:.2f}, reduced CO₂ by {metrics['reduced_emissions_kg_co2']:.2f} kg."
+                    print(f"[DEBUG] AI report failed: {error_msg}")  # DEBUG: Failure
+
             except Exception as e:
-                summary = f"AI report error: {str(e)}"
+                summary = f"AI report exception: {str(e)}\n\nFallback: Saved £{metrics['saved_money']:.2f}, reduced CO₂ by {metrics['reduced_emissions_kg_co2']:.2f} kg."
+                print(f"[DEBUG] Exception in Gemini call: {str(e)}")  # DEBUG: Exception
         else:
-            # Fallback if no key
-            summary = f"Optimization complete: Saved £{metrics['saved_money']:.2f}, reduced CO₂ by {metrics['reduced_emissions_kg_co2']:.2f} kg."
+            summary = "GEMINI_API_KEY not set in environment. Using fallback."
+            print("[DEBUG] GEMINI_API_KEY missing")  # DEBUG: No key
         # Prepare artifacts
         artifacts_dir = ensure_artifacts_dir()
         run_id = uuid.uuid4().hex[:12]
