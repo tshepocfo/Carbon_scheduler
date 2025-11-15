@@ -12,6 +12,28 @@ from datetime import datetime, timedelta
 import json
 import requests
 from math import radians, sin, cos, sqrt, atan2
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import io
+import base64
+import re  # <-- ADD THIS LINE IF NOT THERE
+
+def clean_markdown(text):
+    """Remove all Markdown: **bold**, *italic*, # headers, etc."""
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # **bold**
+    text = re.sub(r'\*(.*?)\*', r'\1', text)      # *italic*
+    text = re.sub(r'#+\s?', '', text)             # # Header
+    text = re.sub(r'```[\w]*\n?', '', text)       # ```code```
+    text = re.sub(r'`([^`]+)`', r'\1', text)      # `code`
+    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)  # [link](url)
+    text = re.sub(r'_{1,2}(.*?)_{1,2}', r'\1', text)  # __underline__
+    text = text.replace('---', '').replace('___', '')
+    return text.strip()
 
 # Assuming utils.helpers are modified or stubbed. I'll provide a sample implementation for compute_metrics and others.
 # For completeness, I'll define stub functions here. In practice, move them to utils/helpers.py.
@@ -238,76 +260,148 @@ def ensure_artifacts_dir():
     os.makedirs(dir, exist_ok=True)
     return dir
 
-def create_chart(gpu_hours, metrics, chart_path):
-    # Stub: Use matplotlib to create a bar chart
+# Updated create_chart function
+def create_chart(gpu_hours, metrics):
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots()
-    ax.bar(["Saved Money", "Reduced Emissions"], [metrics["saved_money"], metrics["reduced_emissions_kg_co2"]])
-    plt.savefig(chart_path)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    labels = ["Saved Money", "CO₂ Reduced"]
+    values = [metrics["saved_money"], metrics["reduced_emissions_kg_co2"]]
+    colors = ['#7BE200', '#00C2FF']
+    ax.bar(labels, values, color=colors)
+    ax.set_title("Optimization Impact", color='white', fontsize=14)
+    ax.set_ylabel("Value", color='white')
+    ax.tick_params(colors='white')
+    fig.patch.set_facecolor('#0b0b0b')
+    ax.set_facecolor('#0b0b0b')
+    plt.tight_layout()
 
-def create_pdf(title: str, metrics: Dict, chart_path: str, output_pdf_path: str, summary: Optional[str] = None) -> None:
-    """Create a beautiful PDF report."""
-    from reportlab.lib.pagesizes import LETTER
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch
-    from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-    from reportlab.lib import colors
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png', facecolor=fig.get_facecolor(), dpi=150)
+    buffer.seek(0)
+    img_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+    plt.close()
+    return img_base64
 
+
+# Updated create_pdf function
+# Register Space Grotesk (must have assets/SpaceGrotesk/*.ttf)
+font_path = "assets/SpaceGrotesk"
+try:
+    pdfmetrics.registerFont(TTFont("SpaceGrotesk", os.path.join(font_path, "SpaceGrotesk-Regular.ttf")))
+    pdfmetrics.registerFont(TTFont("SpaceGrotesk-Medium", os.path.join(font_path, "SpaceGrotesk-Medium.ttf")))
+    pdfmetrics.registerFont(TTFont("SpaceGrotesk-SemiBold", os.path.join(font_path, "SpaceGrotesk-SemiBold.ttf")))
+    pdfmetrics.registerFont(TTFont("SpaceGrotesk-Bold", os.path.join(font_path, "SpaceGrotesk-Bold.ttf")))
+except:
+    print("[WARN] Space Grotesk not found — falling back to Helvetica")
+
+def create_pdf(metrics, summary, chart_base64):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=landscape(A4),
+        topMargin=15*mm, bottomMargin=15*mm, leftMargin=15*mm, rightMargin=15*mm
+    )
+    width, height = landscape(A4)
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('Title', parent=styles['Title'], fontSize=18, spaceAfter=20)
-    heading_style = ParagraphStyle('Heading', parent=styles['Heading2'], fontSize=14, spaceAfter=10)
-    body_style = styles['BodyText']
-    
+
+    # Custom Styles
+    styles.add(ParagraphStyle(name='HeroTitle', fontName='SpaceGrotesk-Bold', fontSize=42, leading=48,
+                             textColor=colors.HexColor('#ffffff'), alignment=0, spaceAfter=16))
+    styles.add(ParagraphStyle(name='HeroSub', fontName='SpaceGrotesk-Medium', fontSize=16, leading=24,
+                             textColor=colors.HexColor('#bdbdbd'), spaceAfter=32))
+    styles.add(ParagraphStyle(name='CardTitle', fontName='SpaceGrotesk-SemiBold', fontSize=20, leading=26,
+                             textColor=colors.HexColor('#7BE200'), spaceAfter=12))
+    styles.add(ParagraphStyle(name='Body', fontName='SpaceGrotesk', fontSize=13, leading=18,
+                             textColor=colors.HexColor('#ffffff'), spaceAfter=10))
+    styles.add(ParagraphStyle(name='Muted', fontName='SpaceGrotesk', fontSize=11, leading=16,
+                             textColor=colors.HexColor('#bdbdbd')))
+
     story = []
-    
-    # Title
-    story.append(Paragraph(title, title_style))
-    story.append(Spacer(1, 0.3 * inch))
-    
-    # Company and Details
-    story.append(Paragraph(f"Company: {metrics['company_name']}", heading_style))
-    story.append(Paragraph(f"Workload Type: {metrics['workload_type']}", body_style))
-    story.append(Paragraph(f"Cloud Region: {metrics['cloud_region']} ({regions[metrics['cloud_region']]['location']})", body_style))
-    story.append(Paragraph(f"GPU Hours: {metrics['gpu_hours']}", body_style))
-    story.append(Spacer(1, 0.2 * inch))
-    
+
+    # HERO: Glass Card + Overlapping Image
+    hero_card = Table([[
+        Paragraph("Smarter AI. Lower Cost. Less Carbon.", styles['HeroTitle']),
+        Paragraph("Optimize your AI workloads with real-time carbon-aware routing and cost intelligence.", styles['HeroSub'])
+    ]], colWidths=[140*mm])
+    hero_card.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#0b0b0b')),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#ffffff'), None, (0.18,)),
+        ('ROUNDEDCORNERS', [(0,0), (-1,-1)], 24),
+        ('LEFTPADDING', (0,0), (-1,-1), 32), ('RIGHTPADDING', (0,0), (-1,-1), 32),
+        ('TOPPADDING', (0,0), (-1,-1), 28), ('BOTTOMPADDING', (0,0), (-1,-1), 28),
+    ]))
+    story.append(hero_card)
+
+    # Chart Image (overlaps right)
+    if chart_base64:
+        try:
+            img_io = io.BytesIO(base64.b64decode(chart_base64))
+            img = Image(img_io, width=130*mm, height=90*mm)
+            img.hAlign = 'RIGHT'
+            story.append(img)
+        except:
+            pass
+    story.append(Spacer(1, 20))
+
+    # FEATURE CARDS
+    features = [
+        [Paragraph("Carbon-aware workload routing", styles['CardTitle']),
+         Paragraph("Direct AI tasks to data centers with the lowest real-time carbon intensity.", styles['Body'])],
+        [Paragraph("Real-time cost optimization", styles['CardTitle']),
+         Paragraph("Automatically allocate workloads to the most cost-effective cloud regions.", styles['Body'])]
+    ]
+    feature_table = Table(features, colWidths=[width*0.45, width*0.45])
+    feature_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#0b0b0b')),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#ffffff'), None, (0.18,)),
+        ('ROUNDEDCORNERS', [(0,0), (-1,-1)], 20),
+        ('LEFTPADDING', (0,0), (-1,-1), 28), ('RIGHTPADDING', (0,0), (-1,-1), 28),
+        ('TOPPADDING', (0,0), (-1,-1), 24), ('BOTTOMPADDING', (0,0), (-1,-1), 24),
+    ]))
+    story.append(feature_table)
+    story.append(Spacer(1, 25))
+
+    # AI REPORT
+    story.append(Paragraph(f"AI Optimization Report for {metrics['company_name']}", styles['CardTitle']))
+    story.append(Spacer(1, 10))
+
     # Metrics Table
     data = [
         ["Metric", "Value"],
-        ["Saved Money ($)", f"${metrics['saved_money']:.2f}"],
-        ["Emissions (kg CO2)", f"{metrics['emissions_kg_co2']:.2f}"],
-        ["Reduced Emissions (kg CO2)", f"{metrics['reduced_emissions_kg_co2']:.2f}"],
-        ["Latency (ms)", f"{metrics['latency_ms']:.2f}"],
-        ["Carbon Intensity (gCO2e/kWh)", f"{metrics['carbon_intensity_gco2_kwh']:.2f}"],
-        ["Last Updated", metrics['last_updated']],
-        ["Optimization Score", f"{metrics['score']:.2f}"],
+        ["Savings", f"£{metrics['saved_money']:,.2f}"],
+        ["CO₂ Reduced", f"{metrics['reduced_emissions_kg_co2']:,.2f} kg"],
+        ["Latency", f"{metrics['latency_ms']:.0f} ms"],
+        ["Score", f"{metrics['score']:.2f}/1.0"]
     ]
-    table = Table(data, colWidths=[3*inch, 3*inch])
+    table = Table(data, colWidths=[80, 100])
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#7BE200')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.black),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#ffffff'), None, (0.06,)),
+        ('FONTNAME', (0,0), (-1,0), 'SpaceGrotesk-Bold'),
+        ('FONTNAME', (0,1), (-1,-1), 'SpaceGrotesk-Medium'),
     ]))
     story.append(table)
-    story.append(Spacer(1, 0.3 * inch))
-    
-    # Chart
-    if os.path.exists(chart_path):
-        story.append(Paragraph("Visualization", heading_style))
-        story.append(Image(chart_path, width=6 * inch, height=4 * inch))
-        story.append(Spacer(1, 0.2 * inch))
-    
-    # Summary
-    if summary:
-        story.append(Paragraph("AI Summary", heading_style))
-        story.append(Paragraph(summary, body_style))
-    
-    doc = SimpleDocTemplate(output_pdf_path, pagesize=LETTER)
-    doc.build(story)
+    story.append(Spacer(1, 15))
+
+    # AI Summary (cleaned)
+    for para in summary.split('\n\n'):
+        if para.strip():
+            story.append(Paragraph(para.replace('\n', '<br/>'), styles['Body']))
+
+    # Footer
+    def footer(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(colors.HexColor('#0e0e0e'))
+        canvas.rect(0, 0, width, 40, fill=1)
+        canvas.setFont('SpaceGrotesk-Medium', 10)
+        canvas.setFillColor(colors.HexColor('#bdbdbd'))
+        canvas.drawString(20, 20, "© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
 
 
 def s3_upload(file_path, key, bucket, region):
@@ -437,6 +531,7 @@ def calculate():
                         message = result["choices"][0]["message"]
                         if "content" in message:
                             summary = message["content"].strip()
+                            summary = clean_markdown(summary)  # REMOVE *, **, #
                             print(f"[DEBUG] AI report generated successfully. Length: {len(summary)} chars")
                         else:
                             summary = "No content in OpenAI response."
@@ -457,7 +552,8 @@ def calculate():
         else:
             summary = "OPENAI_API_KEY not set in environment. Using fallback."
             print("[DEBUG] OPENAI_API_KEY missing")
-            
+
+
         # Prepare artifacts
         artifacts_dir = ensure_artifacts_dir()
         run_id = uuid.uuid4().hex[:12]
@@ -466,7 +562,19 @@ def calculate():
         chart_path = os.path.join(artifacts_dir, chart_name)
         pdf_path = os.path.join(artifacts_dir, pdf_name)
         create_chart(gpu_hours, metrics, chart_path)
-        create_pdf("AI Report", metrics, chart_path, pdf_path, summary=summary)
+        # Generate chart
+        chart_base64 = create_chart(gpu_hours, metrics)
+
+        # Generate PDF
+        pdf_bytes = create_pdf(metrics, summary, chart_base64)
+
+        # Save PDF
+        with open(pdf_path, "wb") as f:
+            f.write(pdf_bytes)
+
+        # URLs
+        chart_url = f"/artifact/{chart_name}"
+        pdf_url = f"/artifact/{pdf_name}"
         # Optional S3 upload
         if os.getenv("USE_S3", "false").lower() == "true":
             bucket = os.getenv("S3_BUCKET")
