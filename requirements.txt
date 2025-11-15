@@ -5,3 +5,4 @@ python-dotenv==1.0.0
 requests==2.31.0
 matplotlib==3.7.2
 reportlab==4.0.4
+Pillow==10.1.0
