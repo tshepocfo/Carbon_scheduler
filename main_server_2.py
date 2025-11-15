@@ -377,14 +377,13 @@ def calculate():
         region = clean["cloud_region"]
         metrics = compute_metrics(company, workload, priorities, gpu_hours, region)
 
-    
         # AI-Powered Formal Report using Google Gemini
         GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
         if GEMINI_API_KEY:
             try:
                 import requests
                 prompt = f"""
-                Write a professional, detailed AI optimization report (400-600 words) for {metrics['company_name']}.
+                Write a professional, detailed AI optimization report (200-350 words) for {metrics['company_name']}.
                 Use formal business language. Include these key results:
                 - Financial savings: £{metrics['saved_money']:.2f} (Spot vs On-Demand)
                 - CO₂ reduction: {metrics['reduced_emissions_kg_co2']:.2f} kg
