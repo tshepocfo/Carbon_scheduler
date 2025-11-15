@@ -377,16 +377,16 @@ def calculate():
         region = clean["cloud_region"]
         metrics = compute_metrics(company, workload, priorities, gpu_hours, region)
 
-        # AI-Powered Formal Report using Google Gemini (PRODUCTION + DEBUG)
-        GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-        if GEMINI_API_KEY:
+        # AI-Powered Formal Report using OpenAI GPT-4o-mini (FREE TRIAL + DEBUG)
+        OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+        if OPENAI_API_KEY:
             try:
                 import requests
-                print(f"[DEBUG] GEMINI_API_KEY found: {GEMINI_API_KEY[:10]}...")
+                print(f"[DEBUG] OPENAI_API_KEY found: {OPENAI_API_KEY[:8]}...")
 
                 prompt = f"""
                 Write a professional, detailed AI optimization report (200-350 words) for {metrics['company_name']}.
-                Use formal business language. Include these key results:
+                Use formal British business language. Include these key results:
                 - Financial savings: £{metrics['saved_money']:.2f} (Spot vs On-Demand)
                 - CO₂ reduction: {metrics['reduced_emissions_kg_co2']:.2f} kg
                 - Carbon intensity: {metrics['carbon_intensity_gco2_kwh']:.1f} gCO₂e/kWh
@@ -405,47 +405,43 @@ def calculate():
                 End with a positive, actionable closing.
                 """
 
-                print(f"[DEBUG] Sending prompt to Gemini (first 200 chars): {prompt[:200]}...")
+                print(f"[DEBUG] Sending prompt to OpenAI (first 200 chars): {prompt[:200]}...")
 
                 response = requests.post(
-                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent",
-                    headers={"Content-Type": "application/json"},
-                    params={"key": GEMINI_API_KEY},
-                    json={
-                        "contents": [{"parts": [{"text": prompt}]}],
-                        "generationConfig": {
-                            "temperature": 0.6,
-                            "maxOutputTokens": 1024,
-                            "topP": 0.95
-                        }
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {OPENAI_API_KEY}"
                     },
-                    timeout=15
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {"role": "system", "content": "You are a senior sustainability consultant writing formal reports for UK tech companies."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.6,
+                        "max_tokens": 600,
+                        "top_p": 0.95
+                    },
+                    timeout=20
                 )
 
-                print(f"[DEBUG] Gemini HTTP Status: {response.status_code}")
-                print(f"[DEBUG] Gemini Response Body: {response.text[:500]}")
+                print(f"[DEBUG] OpenAI HTTP Status: {response.status_code}")
+                print(f"[DEBUG] OpenAI Response Body: {response.text[:500]}")
 
                 if response.status_code == 200:
                     result = response.json()
-                    print(f"[DEBUG] Full Gemini response structure: {list(result.keys())}")
+                    print(f"[DEBUG] OpenAI response keys: {list(result.keys())}")
 
-                    if "candidates" in result and result["candidates"]:
-                        candidate = result["candidates"][0]
-                        if "content" in candidate:
-                            content = candidate["content"]
-                            if "parts" in content and content["parts"]:
-                                summary = content["parts"][0].get("text", "")
-                                if summary:
-                                    summary = summary.replace("```markdown", "").replace("```", "").strip()
-                                    print(f"[DEBUG] AI report generated successfully. Length: {len(summary)} chars")
-                                else:
-                                    summary = "No text in generated parts."
-                            else:
-                                summary = f"No 'parts' in content: {content}"
+                    if "choices" in result and result["choices"]:
+                        message = result["choices"][0]["message"]
+                        if "content" in message:
+                            summary = message["content"].strip()
+                            print(f"[DEBUG] AI report generated successfully. Length: {len(summary)} chars")
                         else:
-                            summary = f"No 'content' in candidate: {candidate}"
+                            summary = "No content in OpenAI response."
                     else:
-                        summary = f"No candidates in response: {result}"
+                        summary = f"No choices in response: {result}"
                 else:
                     try:
                         error_data = response.json()
@@ -457,10 +453,10 @@ def calculate():
 
             except Exception as e:
                 summary = f"AI report exception: {str(e)}\n\nFallback: Saved £{metrics['saved_money']:.2f}, reduced CO₂ by {metrics['reduced_emissions_kg_co2']:.2f} kg."
-                print(f"[DEBUG] Exception in Gemini call: {str(e)}")
+                print(f"[DEBUG] Exception in OpenAI call: {str(e)}")
         else:
-            summary = "GEMINI_API_KEY not set in environment. Using fallback."
-            print("[DEBUG] GEMINI_API_KEY missing")
+            summary = "OPENAI_API_KEY not set in environment. Using fallback."
+            print("[DEBUG] OPENAI_API_KEY missing")
             
         # Prepare artifacts
         artifacts_dir = ensure_artifacts_dir()
