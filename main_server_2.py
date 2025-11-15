@@ -210,14 +210,27 @@ def compute_metrics(company: str, workload: str, priorities: Dict[str, float], g
 
 # Stub for other helpers (implement as needed)
 def validate_input(data):
-    # Sample validation
     required = ["company_name", "workload_type", "priorities", "gpu_hours", "cloud_region"]
-    for r in required:
-        if r not in data:
-            return f"Missing {r}", None
-    priorities = data["priorities"]
-    if not isinstance(priorities, dict) or set(priorities.keys()) != {"carbon", "cost", "speed"}:
-        return "Invalid priorities", None
+    missing = [r for r in required if r not in data]
+    if missing:
+        return f"Missing fields: {', '.join(missing)}", None
+
+    priorities = data.get("priorities", {})
+    if not isinstance(priorities, dict):
+        return "Invalid priorities: must be an object", None
+    expected_keys = {"cost", "carbon", "speed"}
+    if not expected_keys.issubset(priorities.keys()):
+        return f"Priorities must include: {', '.join(expected_keys)}", None
+
+    # Optional: validate types
+    try:
+        float(data["gpu_hours"])
+        for v in priorities.values():
+            float(v)
+    except (ValueError, TypeError):
+        return "gpu_hours and priorities must be numbers", None
+
+    # user_email is OPTIONAL → allowed but not required
     return None, data
 
 def ensure_artifacts_dir():
@@ -364,14 +377,60 @@ def calculate():
         region = clean["cloud_region"]
         metrics = compute_metrics(company, workload, priorities, gpu_hours, region)
 
-        # NEW: Generate summary
-        summary = f"""
-        {metrics['company_name']} Optimization Report:
-        - Saved: ${metrics['saved_money']:.2f} using Spot Instances vs. On-Demand.
-        - Reduced CO₂: {metrics['reduced_emissions_kg_co2']:.2f} kg (intensity: {metrics['carbon_intensity_gco2_kwh']:.2f} gCO₂e/kWh).
-        - Latency: {metrics['latency_ms']:.1f} ms.
-        - Score: {metrics['score']:.2f}/1.0
-        """
+    
+        # AI-Powered Formal Report using Google Gemini
+        GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+        if GEMINI_API_KEY:
+            try:
+                import requests
+                prompt = f"""
+                Write a professional, detailed AI optimization report (400-600 words) for {metrics['company_name']}.
+                Use formal business language. Include these key results:
+                - Financial savings: £{metrics['saved_money']:.2f} (Spot vs On-Demand)
+                - CO₂ reduction: {metrics['reduced_emissions_kg_co2']:.2f} kg
+                - Carbon intensity: {metrics['carbon_intensity_gco2_kwh']:.1f} gCO₂e/kWh
+                - Latency: {metrics['latency_ms']:.0f} ms
+                - Optimization score: {metrics['score']:.2f}/1.0
+                - Region: {regions[metrics['cloud_region']]['location']}
+                - Workload: {metrics['workload_type'].title()}
+                - GPU hours: {metrics['gpu_hours']}
+
+                Structure:
+                1. Executive Summary
+                2. Financial Impact
+                3. Environmental Impact
+                4. Performance & Latency
+                5. Recommendations
+                End with a positive, actionable closing.
+                """
+
+                response = requests.post(
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+                    headers={"Content-Type": "application/json"},
+                    params={"key": GEMINI_API_KEY},
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "temperature": 0.6,
+                            "maxOutputTokens": 1024,
+                            "topP": 0.95
+                        }
+                    },
+                    timeout=15
+                )
+
+                if response.status_code == 200:
+                    result = response.json()
+                    summary = result["candidates"][0]["content"]["parts"][0]["text"]
+                    # Clean up any markdown artifacts
+                    summary = summary.replace("```markdown", "").replace("```", "").strip()
+                else:
+                    summary = f"AI report generation failed: {response.text}"
+            except Exception as e:
+                summary = f"AI report error: {str(e)}"
+        else:
+            # Fallback if no key
+            summary = f"Optimization complete: Saved £{metrics['saved_money']:.2f}, reduced CO₂ by {metrics['reduced_emissions_kg_co2']:.2f} kg."
         # Prepare artifacts
         artifacts_dir = ensure_artifacts_dir()
         run_id = uuid.uuid4().hex[:12]
