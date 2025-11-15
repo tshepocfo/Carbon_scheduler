@@ -566,9 +566,14 @@ def calculate():
         pdf_name = f"{run_id}_report.pdf"
         chart_path = os.path.join(artifacts_dir, chart_name)
         pdf_path = os.path.join(artifacts_dir, pdf_name)
-        create_chart(gpu_hours, metrics, chart_path)
+
         # Generate chart
+
         chart_base64 = create_chart(gpu_hours, metrics)
+        # Save chart to disk for S3 upload (if enabled)
+        chart_path = os.path.join(artifacts_dir, chart_name)
+        with open(chart_path, "wb") as f:
+            f.write(base64.b64decode(chart_base64))
 
         # Generate PDF
         pdf_bytes = create_pdf(metrics, summary, chart_base64)
@@ -580,6 +585,7 @@ def calculate():
         # URLs
         chart_url = f"/artifact/{chart_name}"
         pdf_url = f"/artifact/{pdf_name}"
+
         # Optional S3 upload
         if os.getenv("USE_S3", "false").lower() == "true":
             bucket = os.getenv("S3_BUCKET")
