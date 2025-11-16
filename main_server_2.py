@@ -105,7 +105,6 @@ regions = {
     "ap-east-1": {"lat": 22.2908475, "lon": 114.2723379, "location": "Asia Pacific (Hong Kong)"},
     "cn-north-1": {"lat": 39.8094478, "lon": 116.5783234, "location": "China (Beijing)"},
     "cn-northwest-1": {"lat": 37.5024418, "lon": 105.1627193, "location": "China (Ningxia)"},
-    # NOTE: duplicate eu-north-1 removed
 }
 
 # --------------------------------------------------------------------------- #
@@ -290,7 +289,7 @@ def ensure_artifacts_dir() -> str:
 # --------------------------------------------------------------------------- #
 def create_chart(metrics: Dict, chart_path: str) -> None:
     """Save a dark-theme bar chart to `chart_path`."""
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(9, 5), dpi=100)  # ← FIXED SIZE
     labels = ["Saved Money (£)", "CO₂ Reduced (kg)"]
     values = [metrics["saved_money"], metrics["reduced_emissions_kg_co2"]]
     colors = ["#7BE200", "#00C2FF"]
@@ -300,13 +299,13 @@ def create_chart(metrics: Dict, chart_path: str) -> None:
     ax.tick_params(colors="white")
     fig.patch.set_facecolor("#0b0b0b")
     ax.set_facecolor("#0b0b0b")
-    plt.tight_layout()
+    plt.tight_layout(pad=3.0)  # ← PREVENT OVERFLOW
     plt.savefig(chart_path, format="png", facecolor="#0b0b0b", dpi=150, bbox_inches="tight")
     plt.close(fig)
 
 
 # --------------------------------------------------------------------------- #
-#               HTML + PLAYWRIGHT PDF (Qodo.ai version – inserted)            #
+#               HTML + PLAYWRIGHT PDF (Qodo.ai + Fixes)                        #
 # --------------------------------------------------------------------------- #
 def _html_escape(s: str) -> str:
     return (
@@ -336,124 +335,401 @@ def _safe_copy(src: Optional[str], dst: str) -> Optional[str]:
 
 
 def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[str]) -> Dict[str, str]:
-    # (Qodo.ai code – unchanged except using `regions` from the global scope)
-    company = _html_escape(metrics.get("company_name", ""))
-    saved_money = f"{metrics.get('saved_money', 0.0):.2f}"
-    co2_reduced = f"{metrics.get('reduced_emissions_kg_co2', 0.0):.2f}"
-    latency_ms = f"{metrics.get('latency_ms', 0.0):.0f}"
-    score_val = f"{metrics.get('score', 0.0):.2f}"
-    region_code = metrics.get("cloud_region", "")
-    region_loc = regions.get(region_code, {}).get("location", region_code)
-    workload = _html_escape(str(metrics.get("workload_type", "")).title())
-    gpu_hours = _html_escape(str(metrics.get("gpu_hours", "")))
-    carbon_intensity = f"{metrics.get('carbon_intensity_gco2_kwh', 0.0):.1f}"
-    last_updated = _html_escape(metrics.get("last_updated", ""))
-    summary_html = _html_escape(summary or "").replace("\n", "<br/>")
-    chart_filename = "chart.png" if chart_path else None
-
-    css = textwrap.dedent(
-        """
-        @page { size: 297mm 210mm; margin: 0; }
-        :root { --bg:#0b0b0b;--glass:rgba(255,255,255,0.02);--glass-border:rgba(255,255,255,0.18);
-                --text:#fff;--muted:#bdbdbd;--accent:#7BE200;--footer:#0e0e0e;--divider:rgba(255,255,255,0.06); }
-        *{box-sizing:border-box;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
-        html,body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui;width:297mm;height:210mm;overflow:hidden;}
-        .page{position:relative;width:297mm;height:210mm;display:flex;flex-direction:column;}
-        .container{padding:16mm 18mm 0 18mm;flex:1;}
-        .nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10mm;}
-        .logo{display:flex;align-items:center;gap:6mm;}
-        .logo .mark{width:12mm;height:12mm;border-radius:3mm;background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.08));
-                 border:1px solid var(--glass-border);display:grid;place-items:center;box-shadow:0 4px 24px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06);}
-        .logo .mark:before{content:"star";color:#fff;font-size:6mm;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4));}
-        .logo .text{font-weight:700;letter-spacing:.5px;opacity:.95;}
-        .nav-menu{display:flex;gap:10mm;color:var(--muted);font-size:3.5mm;}
-        .hero{display:grid;grid-template-columns:1.2fr 1fr;gap:10mm;align-items:stretch;position:relative;}
-        .glass{background:var(--glass);border:1px solid var(--glass-border);border-radius:6mm;
-               box-shadow:0 8px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05);position:relative;overflow:hidden;}
-        .glass:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0));pointer-events:none;}
-        .hero-left{padding:12mm;display:flex;flex-direction:column;justify-content:center;gap:6mm;}
-        .headline{font-size:18mm;font-weight:700;line-height:1.05;letter-spacing:-.2mm;max-height:3.2em;}
-        .sub{font-size:4.8mm;color:var(--muted);max-width:140mm;}
-        .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6mm;}
-        .stat{padding:6mm;border-radius:4mm;border:1px solid var(--divider);background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));}
-        .stat .label{color:var(--muted);font-size:3.5mm;margin-bottom:2mm;}
-        .stat .value{font-size:7mm;font-weight:600;color:var(--accent);}
-        .hero-right{position:relative;}
-        .hero-img{width:100%;height:100%;border-radius:4.5mm;object-fit:cover;border:1px solid var(--glass-border);box-shadow:0 10px 40px rgba(0,0,0,.5);}
-        .overlap-card{position:absolute;left:-12%;top:12%;width:60%;z-index:2;padding:6mm;border-radius:4mm;
-                      background:var(--glass);border:1px solid var(--glass-border);box-shadow:0 8px 40px rgba(0,0,0,.45);backdrop-filter:blur(4px);}
-        .overlap-card h4{margin:0 0 2mm 0;font-size:5mm;}
-        .meta{display:flex;gap:6mm;color:var(--muted);font-size:3.5mm;}
-        .features{margin-top:10mm;display:grid;grid-template-columns:1fr 1fr;gap:8mm;}
-        .feature{padding:8mm;}
-        .feature h3{font-size:6mm;margin:0 0 2mm 0;}
-        .feature p{color:var(--muted);font-size:4mm;line-height:1.4;}
-        .feature .feature-img{width:100%;height:45mm;border-radius:4mm;object-fit:cover;border:1px solid var(--glass-border);margin-top:4mm;}
-        .contact{position:absolute;right:18mm;top:20mm;padding:5mm 6mm;border-radius:3.5mm;border:1px solid var(--glass-border);
-                 background:var(--glass);color:var(--muted);font-size:3.7mm;box-shadow:0 8px 28px rgba(0,0,0,.35);}
-        .divider{height:1px;background:var(--divider);margin:8mm 0;width:calc(100% - 36mm);margin-left:18mm;margin-right:18mm;}
-        .chart-wrap{margin-top:8mm;padding:0 18mm;}
-        .chart-title{font-size:5mm;margin-bottom:4mm;color:var(--muted);}
-        .chart-img{width:120mm;height:auto;border-radius:3mm;border:1px solid var(--divider);box-shadow:0 6px 24px rgba(0,0,0,.35);}
-        .footer{background:var(--footer);margin-top:8mm;padding:8mm 18mm;border-top:1px solid var(--divider);
-                display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:10mm;align-items:start;}
-        .footer .brand{display:flex;gap:5mm;align-items:center;}
-        .footer .brand .foot-mark{width:10mm;height:10mm;border-radius:3mm;background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.08));
-                               border:1px solid var(--glass-border);display:grid;place-items:center;}
-        .footer .brand .foot-mark:before{content:"star";color:#fff;font-size:5mm;}
-        .footer h5{margin:0 0 3mm 0;font-size:4.2mm;color:#fff;}
-        .footer ul{list-style:none;padding:0;margin:0;}
-        .footer li{color:var(--muted);font-size:3.7mm;margin:1.5mm 0;}
-        .footer .social{display:flex;gap:3mm;}
-        .footer .social .dot{width:7mm;height:7mm;border-radius:50%;background:var(--bg);border:1px solid var(--divider);
-                           display:grid;place-items:center;color:var(--muted);font-size:3.5mm;}
-        .copyright{color:var(--muted);font-size:3.5mm;text-align:center;padding:4mm 0 6mm 0;
-                   border-top:1px solid var(--divider);width:calc(100% - 36mm);margin-left:18mm;margin-right:18mm;}
-        .ai-summary{margin-top:6mm;padding:6mm;border:1px solid var(--divider);border-radius:4mm;
-                    color:var(--muted);line-height:1.5;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));
-                    font-size:3.8mm;}
-        """
-    ).strip()
-
+    """
+    Build HTML and CSS for a print-perfect A4 landscape PDF.
+    Returns a dict with keys: "html" and "css".
+    """
+    def esc(v: Any) -> str:
+        s = "" if v is None else str(v)
+        return (
+            s.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#x27;")
+        )
+    # Dynamic fields with formatting
+    company = esc(metrics.get("company_name", ""))
+    saved_money_val = metrics.get("saved_money", 0.0)
+    saved_money = f"{float(saved_money_val):,.2f}"
+    co2_val = metrics.get("reduced_emissions_kg_co2", 0.0)
+    co2_reduced = f"{float(co2_val):,.2f}"
+    latency_val = metrics.get("latency_ms", 0)
+    latency_ms = f"{float(latency_val):.0f}"
+    score_val = metrics.get("score", 0.0)
+    score_fmt = f"{float(score_val):.2f}"
+    region_loc = esc(metrics.get("region_location", metrics.get("cloud_region", "")))
+    workload = esc(metrics.get("workload_type", ""))
+    gpu_hours = esc(metrics.get("gpu_hours", ""))
+    carbon_intensity = metrics.get("carbon_intensity_gco2_kwh")
+    carbon_intensity_fmt = "" if carbon_intensity is None else f"{float(carbon_intensity):.1f}"
+    last_updated = esc(metrics.get("last_updated", ""))
+    summary_html = esc(summary or "").replace("\n", "<br/>")
+    chart_img_html = "<img class='chart-img' src='assets/chart.png' alt='Chart'/>" if chart_path else ""
+    css = """
+    @page {
+      size: 297mm 210mm; /* A4 Landscape */
+      margin: 0;
+    }
+    :root {
+      --bg: #0b0b0b;
+      --glass: rgba(255,255,255,0.02);
+      --glass-border: rgba(255,255,255,0.18);
+      --text: #ffffff;
+      --muted: #bdbdbd;
+      --accent: #7BE200;
+      --footer: #0e0e0e;
+      --divider: rgba(255,255,255,0.06);
+      --font: 'Space Grotesk', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      width: 297mm;
+      height: 210mm;
+      overflow: hidden;
+      line-height: 1.5;
+    }
+    .page {
+      position: relative;
+      width: 297mm;
+      height: 210mm;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      padding: 16mm 18mm 0 18mm;
+      flex: 1;
+    }
+    /* Top nav */
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10mm;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 6mm;
+    }
+    .logo .mark {
+      width: 12mm; height: 12mm; border-radius: 3mm;
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+      border: 1px solid var(--glass-border);
+      display: grid; place-items: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .logo .mark:before {
+      content: "★";
+      color: #fff; font-size: 6mm; line-height: 1;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4));
+    }
+    .logo .text {
+      font-weight: 700; letter-spacing: 0.5px; opacity: 0.95;
+    }
+    .nav-menu {
+      display: flex; gap: 10mm;
+      color: var(--muted);
+      font-size: 3.5mm;
+    }
+    /* Hero split */
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 10mm;
+      align-items: stretch;
+      position: relative;
+    }
+    .glass {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 6mm;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
+      position: relative;
+      overflow: hidden;
+    }
+    .glass:after {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0));
+      pointer-events: none;
+    }
+    .hero-left {
+      padding: 12mm;
+      display: flex; flex-direction: column; justify-content: center;
+      gap: 6mm;
+    }
+    .headline {
+      font-size: 18mm;
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.2mm;
+      max-height: 3.2em;
+    }
+    .sub {
+      font-size: 4.8mm;
+      color: var(--muted);
+      max-width: 140mm;
+    }
+    .stats {
+      display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6mm;
+    }
+    .stat {
+      padding: 6mm;
+      border-radius: 4mm;
+      border: 1px solid var(--divider);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
+      text-align: center;
+    }
+    .stat .label { color: var(--muted); font-size: 3.5mm; margin-bottom: 2mm; }
+    .stat .value { font-size: 7mm; font-weight: 600; color: var(--accent); }
+    .hero-right {
+      position: relative;
+    }
+    .hero-img {
+      width: 100%; height: 100%;
+      border-radius: 4.5mm;
+      object-fit: cover;
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    .overlap-card {
+      position: absolute;
+      left: -12%; top: 12%;
+      width: 60%;
+      z-index: 2;
+      padding: 6mm;
+      border-radius: 4mm;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+      backdrop-filter: blur(4px);
+    }
+    .overlap-card h4 { margin: 0 0 2mm 0; font-size: 5mm; }
+    .meta { display: flex; gap: 6mm; color: var(--muted); font-size: 3.5mm; flex-wrap: wrap; }
+    /* Middle feature cards */
+    .features {
+      margin-top: 10mm;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8mm;
+    }
+    .feature { padding: 8mm; }
+    .feature h3 { font-size: 6mm; margin: 0 0 2mm 0; color: #fff; }
+    .feature p { color: var(--muted); font-size: 4mm; line-height: 1.45; }
+    .feature .feature-img {
+      width: 100%; height: 45mm; border-radius: 4mm; object-fit: cover;
+      border: 1px solid var(--glass-border);
+      margin-top: 4mm;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+    }
+    .contact {
+      position: absolute;
+      right: 18mm; top: 20mm;
+      padding: 5mm 6mm;
+      border-radius: 3.5mm;
+      border: 1px solid var(--glass-border);
+      background: var(--glass);
+      color: var(--muted);
+      font-size: 3.7mm;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+    }
+    .divider {
+      height: 1px; background: var(--divider); margin: 8mm 0;
+      width: calc(100% - 36mm); margin-left: 18mm; margin-right: 18mm;
+    }
+    /* Chart section */
+    .chart-wrap {
+      margin-top: 8mm;
+      padding: 0 18mm;
+      text-align: center;
+    }
+    .chart-title { font-size: 5mm; margin-bottom: 4mm; color: var(--muted); text-align: left; }
+    .chart-img {
+      width: 100%; max-width: 240mm; height: auto; border-radius: 3mm; border: 1px solid var(--divider);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.35); margin: 0 auto; display: block;
+    }
+    /* Footer */
+    .footer {
+      background: var(--footer);
+      margin-top: 8mm;
+      padding: 8mm 18mm;
+      border-top: 1px solid var(--divider);
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr 1fr;
+      gap: 10mm;
+      align-items: start;
+    }
+    .footer .brand {
+      display: flex; gap: 5mm; align-items: center;
+    }
+    .footer .brand .foot-mark {
+      width: 10mm; height: 10mm; border-radius: 3mm;
+      background: linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+      border: 1px solid var(--glass-border);
+      display: grid; place-items: center;
+    }
+    .footer .brand .foot-mark:before { content: "★"; color: #fff; font-size: 5mm; }
+    .footer h5 { margin: 0 0 3mm 0; font-size: 4.2mm; color: #fff; }
+    .footer ul { list-style: none; padding: 0; margin: 0; }
+    .footer li { color: var(--muted); font-size: 3.7mm; margin: 1.5mm 0; }
+    .footer .social { display: flex; gap: 3mm; }
+    .footer .social .dot {
+      width: 7mm; height: 7mm; border-radius: 50%;
+      background: var(--bg);
+      border: 1px solid var(--divider);
+      display: grid; place-items: center; color: var(--muted); font-size: 3.5mm;
+    }
+    .copyright {
+      color: var(--muted); font-size: 3.5mm; text-align: center;
+      padding: 4mm 0 6mm 0;
+      border-top: 1px solid var(--divider);
+      width: calc(100% - 36mm); margin-left: 18mm; margin-right: 18mm;
+    }
+    .ai-summary {
+      margin-top: 6mm;
+      padding: 6mm;
+      border: 1px solid var(--divider);
+      border-radius: 4mm;
+      color: var(--muted);
+      line-height: 1.5;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+      font-size: 3.8mm;
+    }
+    ul { padding-left: 20px; margin: 8px 0; }
+    li { margin: 6px 0; position: relative; }
+    li:before { content: "•"; color: var(--accent); position: absolute; left: -16px; font-weight: bold; }
+    img { max-width: 100%; height: auto; display: block; border-radius: 4mm; }
+    """
     html = f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>CarbonSight Scheduler Report</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');</style>
-</head><body>
-<div class="page"><div class="container">
-<div class="nav"><div class="logo"><div class="mark"></div><div class="text">CARBONSIGHT SCHEDULER</div></div>
-<div class="nav-menu">Solutions | About Us | Blog | Support</div></div>
-<div class="hero"><div class="glass hero-left">
-<div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
-<div class="sub">Precision scheduling aligned to carbon intensity and spot market efficiency.</div>
-<div class="stats">
-<div class="stat"><div class="label">Financial Savings</div><div class="value">£{saved_money}</div></div>
-<div class="stat"><div class="label">CO₂ Reduction</div><div class="value">{co2_reduced} kg</div></div>
-<div class="stat"><div class="label">Optimisation Score</div><div class="value">{score_val}/1.0</div></div>
-</div><div class="ai-summary">{summary_html}</div>
-</div><div class="hero-right"><img class="hero-img" src="assets/hero-datacenter.jpg" alt="Data Center"/>
-<div class="overlap-card"><h4>Deployment Meta</h4>
-<div class="meta"><div>Company: {company}</div><div>Region: {_html_escape(region_loc)}</div><div>Latency: {latency_ms} ms</div></div>
-<div class="meta" style="margin-top:3mm;"><div>Workload: {workload}</div><div>GPU Hours: {gpu_hours}</div><div>CI: {carbon_intensity} gCO₂e/kWh</div></div>
-<div class="meta" style="margin-top:3mm;"><div>Last Updated: {last_updated}</div></div>
-</div></div></div>
-<div class="features"><div class="glass feature"><h3>Carbon-Aware Orchestration</h3>
-<p>Dynamically shifts workloads to lower carbon regions.</p></div>
-<div class="glass feature"><h3>Operator Experience</h3><p>Visual scheduling and real-time alerts.</p>
-<img class="feature-img" src="assets/laptop-dark-ui.jpg" alt="UI"/></div></div>
-<div class="contact">Contact delivery team</div></div>
-<div class="divider"></div>
-<div class="chart-wrap"><div class="chart-title">Run Comparison</div>
-{"<img class='chart-img' src='assets/chart.png' alt='Chart'/>" if chart_filename else ""}</div>
-<div class="footer"><div class="brand"><div class="foot-mark"></div>
-<div><div style="font-weight:700;">CARBONSIGHT SCHEDULER</div>
-<div style="color:var(--muted);font-size:3.7mm;">Smarter AI. Lower Cost. Less Carbon.</div></div></div>
-<div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li></ul></div>
-<div><h5>Company</h5><ul><li>About</li><li>Blog</li></ul></div>
-<div><h5>Connect</h5><div class="social"><div class="dot">in</div><div class="dot">x</div></div></div></div>
-<div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div></div></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CarbonSight Scheduler Report</title>
+  <meta name="viewport" content="width=297mm, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');</style>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page">
+    <div class="container">
+      <div class="nav">
+        <div class="logo">
+          <div class="mark"></div>
+          <div class="text">CARBONSIGHT SCHEDULER</div>
+        </div>
+        <div class="nav-menu">Solutions | About Us | Blog | Support</div>
+      </div>
+      <div class="hero">
+        <div class="glass hero-left">
+          <div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
+          <div class="sub">
+            Precision scheduling aligned to carbon intensity and spot market efficiency. Delivering measurable savings and sustainable performance for modern AI workloads.
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="label">Financial Savings</div>
+              <div class="value">£<span class="dynamic-savings">{saved_money}</span></div>
+            </div>
+            <div class="stat">
+              <div class="label">CO₂ Reduction</div>
+              <div class="value"><span class="dynamic-co2">{co2_reduced} kg</span></div>
+            </div>
+            <div class="stat">
+              <div class="label">Optimisation Score</div>
+              <div class="value"><span class="dynamic-score">{score_fmt}/1.0</span></div>
+            </div>
+          </div>
+          <div class="ai-summary">{summary_html}</div>
+        </div>
+        <div class="hero-right">
+          <img class="hero-img" src="assets/hero-datacenter.jpg" alt="Data Center"/>
+          <div class="overlap-card">
+            <h4>Deployment Meta</h4>
+            <div class="meta">
+              <div>Company: <span class="dynamic-company">{company}</span></div>
+              <div>Region: <span class="dynamic-region">{region_loc}</span></div>
+              <div>Latency: <span class="dynamic-latency">{latency_ms} ms</span></div>
+            </div>
+            <div class="meta" style="margin-top:3mm;">
+              <div>Workload: <span class="dynamic-workload">{workload}</span></div>
+              <div>GPU Hours: <span class="dynamic-gpu">{gpu_hours}</span></div>
+              <div>CI: {carbon_intensity_fmt} gCO₂e/kWh</div>
+            </div>
+            <div class="meta" style="margin-top:3mm;">
+              <div>Last Updated: {last_updated}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="features">
+        <div class="glass feature">
+          <h3>Carbon-Aware Orchestration</h3>
+          <p>
+            Dynamically shifts workloads to lower carbon regions and optimises for spot pricing without compromising SLAs.
+            Policy-driven controls ensure compliance and predictable outcomes.
+          </p>
+        </div>
+        <div class="glass feature">
+          <h3>Operator Experience</h3>
+          <p>
+            Visual scheduling, proactive insights and real-time alerts improve operational efficiency and visibility across fleets.
+          </p>
+          <img class="feature-img" src="assets/laptop-dark-ui.jpg" alt="Dark UI"/>
+        </div>
+      </div>
+      <div class="contact">
+        Need a custom rollout? Contact our delivery team.
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="chart-wrap">
+      <div class="chart-title">Run Comparison: Savings and Emissions</div>
+      {chart_img_html}
+    </div>
+    <div class="footer">
+      <div class="brand">
+        <div class="foot-mark"></div>
+        <div>
+          <div style="font-weight:700;">CARBONSIGHT SCHEDULER</div>
+          <div style="color:var(--muted); font-size:3.7mm;">Smarter AI. Lower Cost. Less Carbon.</div>
+        </div>
+      </div>
+      <div>
+        <h5>Products</h5>
+        <ul>
+          <li>Scheduler</li>
+          <li>Carbon Intelligence</li>
+          <li>Cost Insights</li>
+        </ul>
+      </div>
+      <div>
+        <h5>Company</h5>
+        <ul>
+          <li>About</li>
+          <li>Blog</li>
+          <li>Careers</li>
+        </ul>
+      </div>
+      <div>
+        <h5>Connect</h5>
+        <div class="social">
+          <div class="dot">in</div>
+          <div class="dot">x</div>
+          <div class="dot">gh</div>
+        </div>
+      </div>
+    </div>
+    <div class="copyright">
+      © 2025 CarbonSight Scheduler | Terms | Privacy | Cookies
+    </div>
+  </div>
+</body>
+</html>
 """.strip()
-    return {"html": html, "css": css}
+    return {"html": html, "css": css.strip()}
 
 
 def _render_html_to_pdf_using_playwright(html_path: str, pdf_path: str) -> None:
@@ -515,10 +791,10 @@ def create_pdf(
     if chart_path:
         _safe_copy(chart_path, assets_dir / "chart.png")
 
-    # copy optional project assets
-    project_assets = Path.cwd() / "assets"
-    _safe_copy(project_assets / "hero-datacenter.jpg", assets_dir / "hero-datacenter.jpg")
-    _safe_copy(project_assets / "laptop-dark-ui.jpg", assets_dir / "laptop-dark-ui.jpg")
+    # --- FIX: Copy assets from repo's static/assets ---
+    static_assets = Path(__file__).parent / "static" / "assets"
+    _safe_copy(static_assets / "hero-datacenter.jpg", assets_dir / "hero-datacenter.jpg")
+    _safe_copy(static_assets / "laptop-dark-ui.jpg", assets_dir / "laptop-dark-ui.jpg")
 
     # write files
     (workdir / "index.html").write_text(html_str, encoding="utf-8")
