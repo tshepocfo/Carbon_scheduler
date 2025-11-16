@@ -586,15 +586,22 @@ def calculate():
         )
 
         # ------------------------------------------------------------------- #
-        # === AI SUMMARY (ROBUST + DEBUGGABLE) ============================== #
+        # === AI SUMMARY – GROK ONLY ========================================= #
         # ------------------------------------------------------------------- #
-        summary   = "AI summary temporarily unavailable."
-        ai_error  = None
+        summary  = "AI summary temporarily unavailable."
+        ai_error = None
 
-        if os.getenv("OPENAI_API_KEY"):
+        xai_key = os.getenv("XAI_API_KEY")
+        if not xai_key:
+            ai_error = "XAI_API_KEY not set"
+            log.warning(ai_error)
+        else:
             try:
                 import openai
-                client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                client = openai.OpenAI(
+                    api_key=xai_key,
+                    base_url="https://api.x.ai/v1",   # <-- Grok endpoint
+                )
 
                 prompt = f"""
                 Write a concise, professional 120–150 word sustainability impact report for:
@@ -609,8 +616,9 @@ def calculate():
                 Highlight: cost savings via spot instances, carbon reduction vs. baseline, and latency impact.
                 Use positive, forward-looking tone. No disclaimers.
                 """
+
                 response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",  # ← REQUIRED + GUARANTEED TO WORK
+                    model="grok-beta",                 # <-- Grok model
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=280,
                     temperature=0.7,
@@ -620,11 +628,7 @@ def calculate():
 
             except Exception as e:
                 ai_error = str(e)
-                log.warning(f"OpenAI failed: {e}")
-                summary = "AI summary temporarily unavailable."
-        else:
-            ai_error = "OPENAI_API_KEY not set"
-            log.warning("OpenAI skipped: API key missing")
+                log.warning(f"Grok failed: {e}")
 
         # ------------------------------------------------------------------- #
         # === CHART + PDF ===
