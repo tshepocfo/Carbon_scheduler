@@ -1,0 +1,36 @@
+# render.yaml
+services:
+  - type: web
+    name: ai-carbon-calculator
+    env: python
+    plan: free  # Free works, but upgrade to Starter for more CPU/RAM if PDFs are slow
+    buildCommand: |
+      apt-get update -qq && \
+      apt-get install -y -qq --no-install-recommends \
+        libnss3 \
+        libnspr4 \
+        libatk-bridge2.0-0 \
+        libdrm2 \
+        libxkbcommon0 \
+        libatspi2.0-0 \
+        libxshmfence1 \
+        libgbm1 \
+        libasound2 \
+        fonts-liberation \
+        fonts-noto-color-emoji \
+        && rm -rf /var/lib/apt/lists/* \
+      && pip install -r requirements.txt \
+      && playwright install --with-deps chromium
+    startCommand: gunicorn app:app -w 4 -k uvicorn.workers.UvicornWorker  # Use Uvicorn for async (better for Playwright)
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.6  # Or bump to 3.12.x for latest
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: /opt/render/.cache/ms-playwright  # Good – persists browsers across deploys
+      - key: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+        value: "0"  # Good – forces download during build
+      # Add your other env vars here (from dashboard or .env):
+      # - key: API_KEY
+      #   generateValue: true  # Auto-generate secret
+      # - key: ELECTRICITYMAPS_TOKEN
+      #   sync: false  # Set manually
