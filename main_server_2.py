@@ -609,8 +609,8 @@ def calculate():
                 Highlight: cost savings via spot instances, carbon reduction vs. baseline, and latency impact.
                 Use positive, forward-looking tone. No disclaimers.
                 """
-
                 response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",  # ← REQUIRED + GUARANTEED TO WORK
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=280,
                     temperature=0.7,
