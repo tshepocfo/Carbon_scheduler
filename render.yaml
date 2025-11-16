@@ -5,6 +5,9 @@ services:
     env: python
     plan: free
     buildCommand: |
+      # Force Python 3.11.6 (Render sometimes ignores env var)
+      python3.11 -m pip install --upgrade pip && \
+      # Install system deps for Chromium/Playwright
       apt-get update -qq && \
       apt-get install -y -qq --no-install-recommends \
         xvfb \
@@ -27,11 +30,15 @@ services:
         fonts-liberation \
         fonts-noto-color-emoji \
         && rm -rf /var/lib/apt/lists/* \
-      && pip install --no-cache-dir -r requirements.txt \
-      && playwright install --with-deps chromium
+      # Install Python deps (prefer wheels, no source builds)
+      && python3.11 -m pip install --no-cache-dir --only-binary=all -r requirements.txt \
+      # Install Playwright + Chromium
+      && python3.11 -m playwright install --with-deps chromium \
+      # Verify
+      && python3.11 --version && python3.11 -m playwright --version
     startCommand: gunicorn app:app -w 4 -k uvicorn.workers.UvicornWorker --timeout 120 --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.6
+        value: 3.11.6  # Backup – build script enforces it
       - key: PORT
         value: 10000
