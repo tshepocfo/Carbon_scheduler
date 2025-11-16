@@ -385,7 +385,7 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
 
     /* ───── AI SUMMARY ───── */
     .ai-summary { margin-top:5mm; padding:5mm; border:1px solid var(--divider); border-radius:4mm;
-                  background:rgba(255,255,255,0.015); font-size:3.5mm; line-height:1.45; max-height:28mm; overflow:hidden; }
+                  background:rgba(255,255,255,0.015); font-size:3.5mm; line-height:1.45; max-height:42mm; overflow:auto; word-wrap:break-word; }
 
     /* ───── FOOTER ───── */
     .footer    { background:var(--footer); padding:5mm 16mm; border-top:1px solid var(--divider);
@@ -585,15 +585,19 @@ def calculate():
             clean["cloud_region"],
         )
 
-                # === AI SUMMARY (SAFE + PRODUCTION READY) ===
-        summary = "AI summary not configured."
+        # ------------------------------------------------------------------- #
+        # === AI SUMMARY (ROBUST + DEBUGGABLE) ============================== #
+        # ------------------------------------------------------------------- #
+        summary   = "AI summary temporarily unavailable."
+        ai_error  = None
+
         if os.getenv("OPENAI_API_KEY"):
             try:
                 import openai
                 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
                 prompt = f"""
-                Write a concise, professional 180–200 word sustainability impact report for:
+                Write a concise, professional 120–150 word sustainability impact report for:
                 Company: {metrics['company_name']}
                 Workload: {metrics['workload_type'].title()} ({metrics['gpu_hours']} GPU hours)
                 Region: {metrics['region_location']}
@@ -613,31 +617,35 @@ def calculate():
                     temperature=0.7,
                 )
                 raw_summary = response.choices[0].message.content.strip()
-                # Prevent overflow: wrap lines safely for PDF
-                import textwrap
-                summary = textwrap.fill(raw_summary, width=110)
+                summary = textwrap.fill(raw_summary, width=90)
+
             except Exception as e:
-                log.warning(f"OpenAI API failed: {e}")
+                ai_error = str(e)
+                log.warning(f"OpenAI failed: {e}")
                 summary = "AI summary temporarily unavailable."
         else:
-            summary = "AI summary not configured."
-            
+            ai_error = "OPENAI_API_KEY not set"
+            log.warning("OpenAI skipped: API key missing")
 
+        # ------------------------------------------------------------------- #
+        # === CHART + PDF ===
+        # ------------------------------------------------------------------- #
         artifacts_dir = ensure_artifacts_dir()
-        run_id = uuid.uuid4().hex[:12]
-        chart_path = os.path.join(artifacts_dir, f"{run_id}_chart.png")
-        pdf_path = os.path.join(artifacts_dir, f"{run_id}_report.pdf")
+        run_id        = uuid.uuid4().hex[:12]
+        chart_path    = os.path.join(artifacts_dir, f"{run_id}_chart.png")
+        pdf_path      = os.path.join(artifacts_dir, f"{run_id}_report.pdf")
 
         create_chart(metrics, chart_path)
         create_pdf("Report", metrics, chart_path, pdf_path, summary)
 
         chart_url = f"/artifact/{run_id}_chart.png"
-        pdf_url = f"/artifact/{run_id}_report.pdf"
+        pdf_url   = f"/artifact/{run_id}_report.pdf"
 
         return jsonify({
             "ok": True,
             "metrics": metrics,
             "summary": summary,
+            "ai_error": ai_error,          # <-- tells Bubble *why* it failed
             "chart_url": chart_url,
             "pdf_url": pdf_url,
         })
