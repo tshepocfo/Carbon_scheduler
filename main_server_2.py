@@ -303,7 +303,7 @@ def create_chart(metrics: Dict, chart_path: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-#               HTML + PLAYWRIGHT PDF (FIXED)                                  #
+#               HTML + PLAYWRIGHT PDF (FINAL)                                 #
 # --------------------------------------------------------------------------- #
 def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[str]) -> Dict[str, str]:
     def esc(v: Any) -> str:
@@ -316,21 +316,22 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
             .replace("'", "&#x27;")
         )
 
-    # Dynamic values
-    company = esc(metrics.get("company_name", ""))
-    saved_money = f"{metrics.get('saved_money', 0.0):,.2f}"
-    co2_reduced = f"{metrics.get('reduced_emissions_kg_co2', 0.0):,.2f}"
-    latency_ms = f"{metrics.get('latency_ms', 0):.0f}"
-    score_fmt = f"{metrics.get('score', 0.0):.2f}"
-    region_loc = esc(metrics.get("region_location", metrics.get("cloud_region", "")))
-    workload = esc(metrics.get("workload_type", ""))
-    gpu_hours = esc(metrics.get("gpu_hours", ""))
-    carbon_intensity = metrics.get("carbon_intensity_gco2_kwh")
+    # ----- dynamic values ----------------------------------------------------
+    company            = esc(metrics.get("company_name", ""))
+    saved_money        = f"{metrics.get('saved_money', 0.0):,.2f}"
+    co2_reduced        = f"{metrics.get('reduced_emissions_kg_co2', 0.0):,.2f}"
+    latency_ms         = f"{metrics.get('latency_ms', 0):.0f}"
+    score_fmt          = f"{metrics.get('score', 0.0):.2f}"
+    region_loc         = esc(metrics.get("region_location", metrics.get("cloud_region", "")))
+    workload           = esc(metrics.get("workload_type", ""))
+    gpu_hours          = esc(metrics.get("gpu_hours", ""))
+    carbon_intensity   = metrics.get("carbon_intensity_gco2_kwh")
     carbon_intensity_fmt = "" if carbon_intensity is None else f"{float(carbon_intensity):.1f}"
-    last_updated = esc(metrics.get("last_updated", ""))
-    summary_html = esc(summary or "").replace("\n", "<br/>")
-    chart_img_html = "<img class='chart-img' src='assets/chart.png' alt='Chart'/>" if chart_path else ""
+    last_updated       = esc(metrics.get("last_updated", ""))
+    summary_html       = esc(summary or "").replace("\n", "<br/>")
+    chart_img_html     = "<img class='chart-img' src='assets/chart.png' alt='Chart'/>" if chart_path else ""
 
+    # ------------------------------------------------------------------------
     css = """
     @page { size: 297mm 210mm; margin: 0; }
     :root {
@@ -346,92 +347,95 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
     }
     * { box-sizing: border-box; color: var(--text) !important; margin:0; padding:0; }
     html, body { background:var(--bg); font-family:var(--font); width:297mm; height:210mm; }
-    
-    .page   { width:297mm; height:210mm; display:flex; flex-direction:column; }
+
+    .page      { width:297mm; height:210mm; display:flex; flex-direction:column; }
     .container { padding:12mm 16mm 0 16mm; flex:1; display:flex; flex-direction:column; }
-    .nav    { display:flex; justify-content:space-between; margin-bottom:6mm; font-size:3.6mm; }
+    .nav       { display:flex; justify-content:space-between; margin-bottom:6mm; font-size:3.6mm; }
     .logo .text { font-weight:700; letter-spacing:0.4px; }
-    
+
     /* ───── HERO ───── */
-    .hero   { display:grid; grid-template-columns:1.4fr 1fr; gap:10mm; margin-bottom:8mm; }
-    .glass  { background:var(--glass); border:1px solid var(--glass-border); border-radius:5mm; padding:10mm; }
-    .headline { font-size:15mm; font-weight:700; line-height:1.1; margin-bottom:4mm; }
-    .sub    { font-size:4.4mm; color:var(--muted); margin-bottom:6mm; }
-    .stats  { display:grid; grid-template-columns:repeat(3,1fr); gap:5mm; }
-    .stat   { padding:4mm; border:1px solid var(--divider); border-radius:4mm; text-align:center; background:rgba(255,255,255,0.015); }
-    .stat .label { font-size:3.2mm; margin-bottom:1.5mm; }
-    .stat .value { font-size:6.5mm; font-weight:600; color:var(--accent); }
-    
-    /* Hero right side */
-    .hero-right { position:relative; height:70mm; }
-    .hero-img   { width:100%; height:100%; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); }
-    .overlap-card {
-      position:absolute; left:8mm; top:8mm; width:calc(100% - 16mm);
-      padding:5mm; background:var(--glass); border:1px solid var(--glass-border);
-      border-radius:4mm; font-size:3.3mm; line-height:1.4;
+    .hero      { display:grid; grid-template-columns:1.4fr 1fr; gap:10mm; margin-bottom:8mm; }
+    .glass     { background:var(--glass); border:1px solid var(--glass-border); border-radius:5mm; padding:10mm; }
+    .headline  { font-size:15mm; font-weight:700; line-height:1.1; margin-bottom:4mm; }
+    .sub       { font-size:4.4mm; color:var(--muted); margin-bottom:6mm; }
+
+    /* ───── STATS (centred, two-line labels) ───── */
+    .stats     { display:grid; grid-template-columns:repeat(3,1fr); gap:5mm; }
+    .stat      { padding:4mm 2mm; border:1px solid var(--divider); border-radius:4mm; text-align:center; background:rgba(255,255,255,0.015); }
+    .stat .label { font-size:3.2mm; line-height:1.2; margin-bottom:1.5mm; }
+    .stat .value { font-size:6.5mm; font-weight:600; color:var(--accent); line-height:1.1; }
+
+    /* ───── HERO RIGHT – image first, meta card underneath ───── */
+    .hero-right { display:flex; flex-direction:column; height:70mm; }
+    .hero-img   { flex:1; width:100%; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); }
+    .meta-card  {
+      margin-top:4mm; padding:5mm; background:var(--glass);
+      border:1px solid var(--glass-border); border-radius:4mm;
+      font-size:3.3mm; line-height:1.4;
     }
-    
+
     /* ───── FEATURES ───── */
-    .features {
-      display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin-bottom:6mm;
-    }
-    .feature-img {
-      width:100%; height:auto; max-height:38mm; object-fit:cover;
-      border-radius:4mm; margin-top:4mm; border:1px solid var(--glass-border);
-    }
-    
+    .features   { display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin-bottom:6mm; }
+    .feature-img { width:100%; height:auto; max-height:38mm; object-fit:cover; border-radius:4mm; margin-top:4mm; border:1px solid var(--glass-border); }
+
     /* ───── CHART ───── */
-    .chart-section {
-      margin:0 16mm 6mm 16mm; flex-shrink:0;
-    }
-    .chart-title { font-size:4.6mm; color:var(--muted); margin-bottom:3mm; }
-    .chart-img   { width:100%; max-width:260mm; height:auto; border-radius:3mm; border:1px solid var(--divider); }
-    
+    .chart-section { margin:0 16mm 6mm 16mm; flex-shrink:0; }
+    .chart-title   { font-size:4.6mm; color:var(--muted); margin-bottom:3mm; }
+    .chart-img     { width:100%; max-width:260mm; height:auto; border-radius:3mm; border:1px solid var(--divider); }
+
     /* ───── AI SUMMARY ───── */
-    .ai-summary {
-      margin-top:5mm; padding:5mm; border:1px solid var(--divider);
-      border-radius:4mm; background:rgba(255,255,255,0.015);
-      font-size:3.5mm; line-height:1.45; max-height:28mm; overflow:hidden;
-    }
-    
+    .ai-summary { margin-top:5mm; padding:5mm; border:1px solid var(--divider); border-radius:4mm;
+                  background:rgba(255,255,255,0.015); font-size:3.5mm; line-height:1.45; max-height:28mm; overflow:hidden; }
+
     /* ───── FOOTER ───── */
-    .footer {
-      background:var(--footer); padding:5mm 16mm; border-top:1px solid var(--divider);
-      display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr; gap:8mm;
-      font-size:3.5mm; flex-shrink:0;
-    }
-    .copyright {
-      text-align:center; padding:3mm 0; font-size:3.2mm; color:var(--muted);
-      border-top:1px solid var(--divider); margin:0 16mm;
-    }
+    .footer    { background:var(--footer); padding:5mm 16mm; border-top:1px solid var(--divider);
+                 display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr; gap:8mm; font-size:3.5mm; flex-shrink:0; }
+    .copyright { text-align:center; padding:3mm 0; font-size:3.2mm; color:var(--muted);
+                 border-top:1px solid var(--divider); margin:0 16mm; }
     """
 
+    # ------------------------------------------------------------------------
     html = f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>Report</title>
 <style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');</style>
 <style>{css}</style></head><body>
 <div class="page">
   <div class="container">
+    <!-- NAV -->
     <div class="nav">
       <div class="logo"><div class="text">CARBONSIGHT SCHEDULER</div></div>
       <div class="nav-menu">Solutions | About Us | Blog | Support</div>
     </div>
 
+    <!-- HERO -->
     <div class="hero">
       <div class="glass hero-left">
         <div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
         <div class="sub">Precision scheduling aligned to carbon intensity and spot market efficiency.</div>
+
+        <!-- STATS – two-line, perfectly centred -->
         <div class="stats">
-          <div class="stat"><div class="label">Financial Savings</div><div class="value">£{saved_money}</div></div>
-          <div class="stat"><div class="label">CO₂ Reduction</div><div class="value">{co2_reduced} kg</div></div>
-          <div class="stat"><div class="label">Optimisation Score</div><div class="value">{score_fmt}/1.0</div></div>
+          <div class="stat">
+            <div class="label">Financial<br>Savings</div>
+            <div class="value">£{saved_money}</div>
+          </div>
+          <div class="stat">
+            <div class="label">CO₂<br>Reduction</div>
+            <div class="value">{co2_reduced} kg</div>
+          </div>
+          <div class="stat">
+            <div class="label">Optimisation<br>Score</div>
+            <div class="value">{score_fmt}/1.0</div>
+          </div>
         </div>
+
         <div class="ai-summary">{summary_html}</div>
       </div>
 
+      <!-- RIGHT SIDE – image first, meta card below -->
       <div class="hero-right">
         <img class="hero-img" src="assets/hero-datacenter.jpg" alt="Data Center"/>
-        <div class="overlap-card">
+        <div class="meta-card">
           <h4 style="margin:0 0 3mm;font-size:3.8mm;">Deployment Meta</h4>
           <div class="meta">Company: {company} • Region: {region_loc} • Latency: {latency_ms} ms</div>
           <div class="meta">Workload: {workload} • GPU Hours: {gpu_hours} • CI: {carbon_intensity_fmt} gCO₂e/kWh</div>
@@ -440,6 +444,7 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
       </div>
     </div>
 
+    <!-- FEATURES -->
     <div class="features">
       <div class="glass feature">
         <h3>Carbon-Aware Orchestration</h3>
@@ -452,12 +457,14 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
       </div>
     </div>
 
+    <!-- CHART -->
     <div class="chart-section">
       <div class="chart-title">Run Comparison: Savings and Emissions</div>
       {chart_img_html}
     </div>
   </div>
 
+  <!-- FOOTER -->
   <div class="footer">
     <div class="brand"><div><div style="font-weight:700;">CARBONSIGHT SCHEDULER</div><div style="font-size:3.2mm;">Smarter AI. Lower Cost. Less Carbon.</div></div></div>
     <div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li><li>Cost Insights</li></ul></div>
