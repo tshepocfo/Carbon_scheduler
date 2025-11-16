@@ -316,6 +316,7 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
             .replace("'", "&#x27;")
         )
 
+    # Dynamic values
     company = esc(metrics.get("company_name", ""))
     saved_money = f"{metrics.get('saved_money', 0.0):,.2f}"
     co2_reduced = f"{metrics.get('reduced_emissions_kg_co2', 0.0):,.2f}"
@@ -336,83 +337,137 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
       --bg: #0b0b0b;
       --glass: rgba(255,255,255,0.02);
       --glass-border: rgba(255,255,255,0.18);
-      --text: #ffffff !important;
+      --text: #ffffff;
       --muted: #e0e0e0;
       --accent: #7BE200;
       --footer: #0e0e0e;
       --divider: rgba(255,255,255,0.08);
       --font: 'Space Grotesk', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
-    * { box-sizing: border-box; color: var(--text) !important; }
-    html, body { background: var(--bg); font-family: var(--font); width: 297mm; height: 210mm; margin: 0; padding: 0; }
-    .page { width: 297mm; height: 210mm; display: flex; flex-direction: column; }
-    .container { padding: 14mm 16mm 0 16mm; flex: 1; }
-    .nav { display: flex; justify-content: space-between; margin-bottom: 8mm; font-size: 3.6mm; }
-    .logo .text { font-weight: 700; letter-spacing: 0.4px; }
-    .hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 10mm; }
-    .glass { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 5mm; padding: 10mm; }
-    .headline { font-size: 16mm; font-weight: 700; line-height: 1.1; margin-bottom: 4mm; }
-    .sub { font-size: 4.4mm; color: var(--muted); margin-bottom: 6mm; }
-    .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 6mm; }
-    .stat { padding: 5mm; border: 1px solid var(--divider); border-radius: 4mm; text-align: center; background: rgba(255,255,255,0.015); }
-    .stat .label { font-size: 3.4mm; margin-bottom: 2mm; }
-    .stat .value { font-size: 6.8mm; font-weight: 600; color: var(--accent); }
-    .hero-img { width: 100%; height: 100%; object-fit: cover; border-radius: 4mm; border: 1px solid var(--glass-border); }
-    .overlap-card { position: absolute; left: -10%; top: 10%; width: 58%; padding: 5mm; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 4mm; font-size: 3.4mm; }
-    .meta { display: flex; gap: 6mm; flex-wrap: wrap; }
-    .features { margin-top: 8mm; display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
-    .feature-img { width: 100%; height: 42mm; object-fit: cover; border-radius: 4mm; margin-top: 4mm; border: 1px solid var(--glass-border); }
-    .chart-wrap { margin: 8mm 16mm 0; text-align: center; }
-    .chart-title { font-size: 4.8mm; color: var(--muted); margin-bottom: 4mm; text-align: left; }
-    .chart-img { width: 100%; max-width: 235mm; height: auto; border-radius: 3mm; border: 1px solid var(--divider); }
-    .ai-summary { margin-top: 6mm; padding: 6mm; border: 1px solid var(--divider); border-radius: 4mm; background: rgba(255,255,255,0.015); font-size: 3.6mm; line-height: 1.5; }
-    .footer { background: var(--footer); padding: 6mm 16mm; border-top: 1px solid var(--divider); display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 8mm; font-size: 3.6mm; }
-    .copyright { text-align: center; padding: 4mm 0; font-size: 3.4mm; color: var(--muted); border-top: 1px solid var(--divider); margin: 0 16mm; }
-    img { display: block; max-width: 100%; height: auto; }
+    * { box-sizing: border-box; color: var(--text) !important; margin:0; padding:0; }
+    html, body { background:var(--bg); font-family:var(--font); width:297mm; height:210mm; }
+    
+    .page   { width:297mm; height:210mm; display:flex; flex-direction:column; }
+    .container { padding:12mm 16mm 0 16mm; flex:1; display:flex; flex-direction:column; }
+    .nav    { display:flex; justify-content:space-between; margin-bottom:6mm; font-size:3.6mm; }
+    .logo .text { font-weight:700; letter-spacing:0.4px; }
+    
+    /* ───── HERO ───── */
+    .hero   { display:grid; grid-template-columns:1.4fr 1fr; gap:10mm; margin-bottom:8mm; }
+    .glass  { background:var(--glass); border:1px solid var(--glass-border); border-radius:5mm; padding:10mm; }
+    .headline { font-size:15mm; font-weight:700; line-height:1.1; margin-bottom:4mm; }
+    .sub    { font-size:4.4mm; color:var(--muted); margin-bottom:6mm; }
+    .stats  { display:grid; grid-template-columns:repeat(3,1fr); gap:5mm; }
+    .stat   { padding:4mm; border:1px solid var(--divider); border-radius:4mm; text-align:center; background:rgba(255,255,255,0.015); }
+    .stat .label { font-size:3.2mm; margin-bottom:1.5mm; }
+    .stat .value { font-size:6.5mm; font-weight:600; color:var(--accent); }
+    
+    /* Hero right side */
+    .hero-right { position:relative; height:70mm; }
+    .hero-img   { width:100%; height:100%; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); }
+    .overlap-card {
+      position:absolute; left:8mm; top:8mm; width:calc(100% - 16mm);
+      padding:5mm; background:var(--glass); border:1px solid var(--glass-border);
+      border-radius:4mm; font-size:3.3mm; line-height:1.4;
+    }
+    
+    /* ───── FEATURES ───── */
+    .features {
+      display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin-bottom:6mm;
+    }
+    .feature-img {
+      width:100%; height:auto; max-height:38mm; object-fit:cover;
+      border-radius:4mm; margin-top:4mm; border:1px solid var(--glass-border);
+    }
+    
+    /* ───── CHART ───── */
+    .chart-section {
+      margin:0 16mm 6mm 16mm; flex-shrink:0;
+    }
+    .chart-title { font-size:4.6mm; color:var(--muted); margin-bottom:3mm; }
+    .chart-img   { width:100%; max-width:260mm; height:auto; border-radius:3mm; border:1px solid var(--divider); }
+    
+    /* ───── AI SUMMARY ───── */
+    .ai-summary {
+      margin-top:5mm; padding:5mm; border:1px solid var(--divider);
+      border-radius:4mm; background:rgba(255,255,255,0.015);
+      font-size:3.5mm; line-height:1.45; max-height:28mm; overflow:hidden;
+    }
+    
+    /* ───── FOOTER ───── */
+    .footer {
+      background:var(--footer); padding:5mm 16mm; border-top:1px solid var(--divider);
+      display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr; gap:8mm;
+      font-size:3.5mm; flex-shrink:0;
+    }
+    .copyright {
+      text-align:center; padding:3mm 0; font-size:3.2mm; color:var(--muted);
+      border-top:1px solid var(--divider); margin:0 16mm;
+    }
     """
+
     html = f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>Report</title>
 <style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');</style>
 <style>{css}</style></head><body>
-<div class="page"><div class="container">
-  <div class="nav"><div class="logo"><div class="mark"></div><div class="text">CARBONSIGHT SCHEDULER</div></div>
-    <div class="nav-menu">Solutions | About Us | Blog | Support</div></div>
-  <div class="hero">
-    <div class="glass hero-left">
-      <div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
-      <div class="sub">Precision scheduling aligned to carbon intensity and spot market efficiency.</div>
-      <div class="stats">
-        <div class="stat"><div class="label">Financial Savings</div><div class="value">£{saved_money}</div></div>
-        <div class="stat"><div class="label">CO₂ Reduction</div><div class="value">{co2_reduced} kg</div></div>
-        <div class="stat"><div class="label">Optimisation Score</div><div class="value">{score_fmt}/1.0</div></div>
-      </div>
-      <div class="ai-summary">{summary_html}</div>
+<div class="page">
+  <div class="container">
+    <div class="nav">
+      <div class="logo"><div class="text">CARBONSIGHT SCHEDULER</div></div>
+      <div class="nav-menu">Solutions | About Us | Blog | Support</div>
     </div>
-    <div class="hero-right" style="position:relative;">
-      <img class="hero-img" src="assets/hero-datacenter.jpg" alt="Data Center"/>
-      <div class="overlap-card">
-        <h4>Deployment Meta</h4>
-        <div class="meta">Company: {company} • Region: {region_loc} • Latency: {latency_ms} ms</div>
-        <div class="meta">Workload: {workload} • GPU Hours: {gpu_hours} • CI: {carbon_intensity_fmt} gCO₂e/kWh</div>
-        <div class="meta">Last Updated: {last_updated}</div>
+
+    <div class="hero">
+      <div class="glass hero-left">
+        <div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
+        <div class="sub">Precision scheduling aligned to carbon intensity and spot market efficiency.</div>
+        <div class="stats">
+          <div class="stat"><div class="label">Financial Savings</div><div class="value">£{saved_money}</div></div>
+          <div class="stat"><div class="label">CO₂ Reduction</div><div class="value">{co2_reduced} kg</div></div>
+          <div class="stat"><div class="label">Optimisation Score</div><div class="value">{score_fmt}/1.0</div></div>
+        </div>
+        <div class="ai-summary">{summary_html}</div>
       </div>
+
+      <div class="hero-right">
+        <img class="hero-img" src="assets/hero-datacenter.jpg" alt="Data Center"/>
+        <div class="overlap-card">
+          <h4 style="margin:0 0 3mm;font-size:3.8mm;">Deployment Meta</h4>
+          <div class="meta">Company: {company} • Region: {region_loc} • Latency: {latency_ms} ms</div>
+          <div class="meta">Workload: {workload} • GPU Hours: {gpu_hours} • CI: {carbon_intensity_fmt} gCO₂e/kWh</div>
+          <div class="meta">Last Updated: {last_updated}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="glass feature">
+        <h3>Carbon-Aware Orchestration</h3>
+        <p>Dynamically shifts workloads to lower carbon regions and optimises for spot pricing.</p>
+      </div>
+      <div class="glass feature">
+        <h3>Operator Experience</h3>
+        <p>Visual scheduling, proactive insights and real-time alerts.</p>
+        <img class="feature-img" src="assets/laptop-dark-ui.jpg" alt="UI"/>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <div class="chart-title">Run Comparison: Savings and Emissions</div>
+      {chart_img_html}
     </div>
   </div>
-  <div class="features">
-    <div class="glass feature"><h3>Carbon-Aware Orchestration</h3><p>Dynamically shifts workloads to lower carbon regions and optimises for spot pricing.</p></div>
-    <div class="glass feature"><h3>Operator Experience</h3><p>Visual scheduling, proactive insights and real-time alerts.</p>
-      <img class="feature-img" src="assets/laptop-dark-ui.jpg" alt="UI"/></div>
+
+  <div class="footer">
+    <div class="brand"><div><div style="font-weight:700;">CARBONSIGHT SCHEDULER</div><div style="font-size:3.2mm;">Smarter AI. Lower Cost. Less Carbon.</div></div></div>
+    <div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li><li>Cost Insights</li></ul></div>
+    <div><h5>Company</h5><ul><li>About</li><li>Blog</li><li>Careers</li></ul></div>
+    <div><h5>Connect</h5><div class="social"><div class="dot">in</div><div class="dot">x</div><div class="dot">gh</div></div></div>
   </div>
+  <div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
 </div>
-<div class="chart-wrap"><div class="chart-title">Run Comparison: Savings and Emissions</div>{chart_img_html}</div>
-<div class="footer">
-  <div class="brand"><div class="foot-mark"></div><div><div style="font-weight:700;">CARBONSIGHT SCHEDULER</div><div style="font-size:3.4mm;">Smarter AI. Lower Cost. Less Carbon.</div></div></div>
-  <div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li><li>Cost Insights</li></ul></div>
-  <div><h5>Company</h5><ul><li>About</li><li>Blog</li><li>Careers</li></ul></div>
-  <div><h5>Connect</h5><div class="social"><div class="dot">in</div><div class="dot">x</div><div class="dot">gh</div></div></div>
-</div>
-<div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
-</div></body></html>"""
+</body></html>"""
+
     return {"html": html, "css": css.strip()}
 
 
@@ -424,7 +479,14 @@ def _render_html_to_pdf_using_playwright(html_path: str, pdf_path: str) -> None:
             page = browser.new_page()
             page.goto(f"file://{html_path}", wait_until="networkidle")
             page.add_style_tag(content="*{color:white !important;}")
-            page.pdf(path=pdf_path, format="A4", landscape=True, print_background=True, prefer_css_page_size=True, margin=0)
+            page.pdf(
+    path=pdf_path,
+    format="A4",
+    landscape=True,
+    print_background=True,
+    prefer_css_page_size=True,
+    margin={"top": "0mm", "bottom": "0mm", "left": "0mm", "right": "0mm"}
+)
             browser.close()
     except Exception as e:
         log.warning(f"Playwright failed: {e}. Falling back to WeasyPrint.")
@@ -516,13 +578,43 @@ def calculate():
             clean["cloud_region"],
         )
 
-        summary = "AI summary not available."
+                # === AI SUMMARY (SAFE + PRODUCTION READY) ===
+        summary = "AI summary not configured."
         if os.getenv("OPENAI_API_KEY"):
             try:
-                prompt = f"Write a 200-word sustainability report for {metrics['company_name']}..."
-                # (full prompt omitted for brevity)
-            except Exception:
-                summary = "AI generation failed."
+                import openai
+                client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+                prompt = f"""
+                Write a concise, professional 180–200 word sustainability impact report for:
+                Company: {metrics['company_name']}
+                Workload: {metrics['workload_type'].title()} ({metrics['gpu_hours']} GPU hours)
+                Region: {metrics['region_location']}
+                Financial Savings: £{metrics['saved_money']:,.0f}
+                CO₂ Reduction: {metrics['reduced_emissions_kg_co2']:,.0f} kg
+                Carbon Intensity: {metrics['carbon_intensity_gco2_kwh']:.1f} gCO₂e/kWh
+                Optimization Score: {metrics['score']:.2f}/1.0
+
+                Highlight: cost savings via spot instances, carbon reduction vs. baseline, and latency impact.
+                Use positive, forward-looking tone. No disclaimers.
+                """
+
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=280,
+                    temperature=0.7,
+                )
+                raw_summary = response.choices[0].message.content.strip()
+                # Prevent overflow: wrap lines safely for PDF
+                import textwrap
+                summary = textwrap.fill(raw_summary, width=110)
+            except Exception as e:
+                log.warning(f"OpenAI API failed: {e}")
+                summary = "AI summary temporarily unavailable."
+        else:
+            summary = "AI summary not configured."
+            
 
         artifacts_dir = ensure_artifacts_dir()
         run_id = uuid.uuid4().hex[:12]
