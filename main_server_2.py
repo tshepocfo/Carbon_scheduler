@@ -246,7 +246,7 @@ def compute_metrics(
         "reduced_emissions_kg_co2": reduced_g / 1000,
         "latency_ms": latency_ms,
         "score": score,
-        "region_location": r["location"],  # ← NEW: used in PDF
+        "region_location": r["location"],
     }
 
 
@@ -284,9 +284,9 @@ def ensure_artifacts_dir() -> str:
 # --------------------------------------------------------------------------- #
 def create_chart(metrics: Dict, chart_path: str) -> None:
     fig, ax = plt.subplots(figsize=(9, 5), dpi=120)
-    labels = ["Saved Money (£)", "CO₂ Reduced (kg)"]
+    labels = ["Saved Money (USD)", "CO₂ Reduced (kg)"]
     values = [metrics["saved_money"], metrics["reduced_emissions_kg_co2"]]
-    colors = ["#7BE200", "#00C2FF"]  # Bright neon
+    colors = ["#7BE200", "#00C2FF"]
     ax.bar(labels, values, color=colors, edgecolor="white", linewidth=1.2)
     ax.set_title("Optimization Impact", color="white", fontsize=16, pad=20)
     ax.set_ylabel("Value", color="white")
@@ -316,7 +316,6 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
             .replace("'", "&#x27;")
         )
 
-    # Dynamic values
     company = esc(metrics.get("company_name", ""))
     saved_money = f"{metrics.get('saved_money', 0.0):,.2f}"
     co2_reduced = f"{metrics.get('reduced_emissions_kg_co2', 0.0):,.2f}"
@@ -448,11 +447,9 @@ def create_pdf(title: str, metrics: Dict, chart_path: str, output_pdf_path: str,
     workdir.mkdir(parents=True, exist_ok=True)
     assets_dir.mkdir(exist_ok=True)
 
-    # Copy chart
     if chart_path and os.path.exists(chart_path):
         shutil.copy(chart_path, assets_dir / "chart.png")
 
-    # Copy static assets (from repo)
     repo_assets = Path(__file__).parent / "static" / "assets"
     for img in ["hero-datacenter.jpg", "laptop-dark-ui.jpg"]:
         src = repo_assets / img
@@ -462,6 +459,37 @@ def create_pdf(title: str, metrics: Dict, chart_path: str, output_pdf_path: str,
 
     (workdir / "index.html").write_text(html_str, encoding="utf-8")
     _render_html_to_pdf_using_playwright(str(workdir / "index.html"), output_pdf_path)
+
+
+# --------------------------------------------------------------------------- #
+#                         FLASK DECORATORS (ADDED)                            #
+# --------------------------------------------------------------------------- #
+def rate_limiter(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown"
+        now = int(time.time())
+        window = now // 60
+        key = f"{ip}:{window}"
+        _requests[key] = _requests.get(key, 0) + 1
+        _requests.pop(f"{ip}:{window - 1}", None)
+        if _requests[key] > RATE_LIMIT:
+            return jsonify({"ok": False, "error": "rate_limited"}), 429
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def require_api_key(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        required = os.getenv("API_KEY")
+        if not required:
+            return jsonify({"ok": False, "error": "server_misconfig"}), 500
+        provided = request.headers.get("X-API-KEY")
+        if provided != required:
+            return jsonify({"ok": False, "error": "unauthorized"}), 401
+        return func(*args, **kwargs)
+    return wrapper
 
 
 # --------------------------------------------------------------------------- #
@@ -488,13 +516,11 @@ def calculate():
             clean["cloud_region"],
         )
 
-        # AI Summary
         summary = "AI summary not available."
         if os.getenv("OPENAI_API_KEY"):
             try:
                 prompt = f"Write a 200-word sustainability report for {metrics['company_name']}..."
-                # (same as before)
-                # ... (omitted for brevity)
+                # (full prompt omitted for brevity)
             except Exception:
                 summary = "AI generation failed."
 
