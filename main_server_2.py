@@ -365,18 +365,11 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
     .stat .label { font-size:3.2mm; line-height:1.2; margin-bottom:1.5mm; }
     .stat .value { font-size:6.5mm; font-weight:600; color:var(--accent); line-height:1.1; }
 
-    .stat .unit-inline {
-  font-size:4.5mm;
-  font-weight:500;
-  color:var(--muted);
-  margin-left:1mm;
-  }
-
     /* ───── HERO RIGHT – image first, meta card underneath ───── */
     .hero-right { display:flex; flex-direction:column; height:70mm; }
     .hero-img   { flex:1; width:100%; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); }
     .meta-card  {
-      margin-top:8mm; padding:5mm; background:var(--glass);
+      margin-top:20mm; padding:5mm; background:var(--glass);
       border:1px solid var(--glass-border); border-radius:4mm;
       font-size:3.3mm; line-height:1.4;
     }
@@ -427,8 +420,8 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
             <div class="value">£{saved_money}</div>
           </div>
           <div class="stat">
-          <div class="label">CO₂<br>Reduction</div>
-          <div class="value">{co2_reduced}<span class="unit-inline"> kg</span></div>
+            <div class="label">CO₂<br>Reduction</div>
+            <div class="value">{co2_reduced} kg</div>
           </div>
           <div class="stat">
             <div class="label">Optimisation<br>Score</div>
@@ -476,7 +469,7 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
     <div class="brand"><div><div style="font-weight:700;">CARBONSIGHT SCHEDULER</div><div style="font-size:3.2mm;">Smarter AI. Lower Cost. Less Carbon.</div></div></div>
     <div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li><li>Cost Insights</li></ul></div>
     <div><h5>Company</h5><ul><li>About</li><li>Blog</li><li>Careers</li></ul></div>
-    <div><h5>Connect</h5><div class="social"><div class="dot">Instagram</div><div class="dot">X</div><div class="dot">LinkedIn</div></div></div>
+    <div><h5>Connect</h5><div class="social"><div class="dot">Instagram</div><div class="dot">LinkedIn</div><div class="dot">Github</div></div></div>
   </div>
   <div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
 </div>
@@ -628,7 +621,7 @@ def calculate():
                 summary = "AI summary temporarily unavailable."
         else:
             summary = "AI summary not configured."
-
+            
 
         artifacts_dir = ensure_artifacts_dir()
         run_id = uuid.uuid4().hex[:12]
