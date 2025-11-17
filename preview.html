@@ -153,12 +153,21 @@
       </div>
     </div>
 
-    <!-- CHART -->
-    <div class="chart-section">
-      <div class="chart-title">Run Comparison: Savings and Emissions</div>
-      {/artifact/1e72f0d2cc6d_chart.pnghttps://carbon-scheduler.onrender.com/}
+        <!-- CHART + AI SUMMARY SIDE-BY-SIDE -->
+    <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 12mm; margin: 10mm 16mm 8mm 16mm; align-items: start;">
+      
+      <!-- Left: Smaller Chart -->
+      <div class="chart-section">
+        <div class="chart-title">Run Comparison: Savings and Emissions</div>
+        {chart_img_html}
+      </div>
+      
+      <!-- Right: AI Summary (now full height, no overflow) -->
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--divider); border-radius: 6mm; padding: 10mm; font-size: 3.8mm; line-height: 1.48; backdrop-filter: blur(4px);">
+        {summary_html.replace('<br/>', '<br>')}
+      </div>
+      
     </div>
-  </div>
 
   <!-- FOOTER -->
   <div class="footer">
