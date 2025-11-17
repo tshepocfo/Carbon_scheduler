@@ -8,8 +8,15 @@
   <style>
     @page { size: 297mm 210mm; margin: 0; }
     :root{
-      --bg:#0b0b0b; --glass:rgba(255,255,255,0.02); --glass-border:rgba(255,255,255,0.18);
-      --text:#fff; --muted:#e0e0e0; --accent:#7BE200; --footer-bg:#0e0e0e; --divider:rgba(255,255,255,0.08);
+      --bg:#0b0b0b;
+      --glass:rgba(255,255,255,0.02);
+      --glass-border:rgba(255,255,255,0.18);
+      --text:#fff;
+      --muted:#e0e0e0;
+      --accent:#7BE200;
+      --footer-bg:#0e0e0e;
+      --divider:rgba(255,255,255,0.08);
+      --footer-height:20mm; /* reserve this much space for footer on page 2 */
     }
 
     /* reset */
@@ -38,33 +45,33 @@
     .feature-card{background:var(--glass);border:1px solid var(--glass-border);border-radius:7mm;padding:8mm;min-height:40mm;display:flex;flex-direction:column;justify-content:flex-start}
     .feature-card h3{font-size:4.6mm;margin-bottom:3mm}
     .feature-card p{font-size:3.6mm;color:var(--muted);line-height:1.45}
-    /* removed .feature-img (operator image) entirely as requested */
 
-    /* PAGE 2 */
-    .chart-and-summary{display:grid;grid-template-columns:1.15fr 1fr;gap:16mm;padding:20mm 16mm 48mm 16mm;align-items:start}
+    /* PAGE 2 - reserve footer area using padding-bottom */
+    .chart-and-summary{display:grid;grid-template-columns:1.15fr 1fr;gap:16mm;padding:20mm 16mm 0 16mm;align-items:start}
+    /* reserve footer space below content area */
+    .chart-and-summary-inner { padding-bottom: calc(var(--footer-height) + 8mm); }
     .chart-title{font-size:5.2mm;color:var(--muted);margin-bottom:10mm;font-weight:600;text-align:center}
-    /* reduce chart visual height to free vertical room for summary */
     .chart-img{width:100%;max-width:215mm;height:58mm;border-radius:8mm;border:1px solid var(--divider);box-shadow:0 4mm 16mm rgba(0,0,0,0.5);display:block;object-fit:cover}
-    .ai-summary-full{background:rgba(255,255,255,0.04);border:1px solid var(--divider);border-radius:8mm;padding:16mm;font-size:4.1mm;line-height:1.56;backdrop-filter:blur(6px)}
+    .ai-summary-full{background:rgba(255,255,255,0.04);border:1px solid var(--divider);border-radius:8mm;padding:16mm;font-size:4.1mm;line-height:1.56;backdrop-filter:blur(6px);min-height:0}
     .ai-summary-full strong{font-size:5.2mm;color:var(--accent);display:block;margin-bottom:8mm}
 
-    /* FOOTER smaller so it doesn't push summary off the page */
-    .footer{position:absolute;bottom:0;left:0;width:100%;background:var(--footer-bg);padding:6mm 16mm;border-top:1px solid var(--divider);display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:10mm;font-size:3.2mm;align-items:start}
+    /* FOOTER — compact and contained, with copyright inside */
+    .footer{position:absolute;bottom:0;left:0;width:100%;height:var(--footer-height);background:var(--footer-bg);padding:6mm 16mm;border-top:1px solid var(--divider);display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:10mm;font-size:3.2mm;align-items:start}
     .footer .brand{font-weight:700}
     .footer h5{font-size:3.8mm;margin-bottom:6px}
     .footer ul{list-style:none;margin:0;padding:0;line-height:1.8;font-size:3mm}
     .footer ul li{margin-bottom:3px}
     .social{display:flex;gap:8px;flex-wrap:wrap}
     .dot{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:999px;font-size:3mm}
-    .copyright{position:absolute;bottom:-6mm;left:0;width:100%;text-align:center;padding:4mm 0 8mm 0;font-size:3mm;color:var(--muted);background:transparent}
+    .footer .footer-copyright { grid-column: 1 / -1; text-align:center; font-size:2.9mm; color:var(--muted); margin-top:6px }
 
-    /* ensure page 1 never shows footer */
-    .page:first-of-type .footer, .page:first-of-type .copyright{display:none !important}
+    /* ensure page 1 never shows footer (and hides internal footer if present) */
+    .page:first-of-type .footer, .page:first-of-type .footer *{display:none !important}
 
     /* printing / images */
     img{display:block;max-width:100%;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact;image-rendering:-webkit-optimize-contrast;page-break-inside:avoid}
     .glass, .stat, .feature-card, .ai-summary-full{page-break-inside:avoid}
-    @media print{body{padding:0}.page{box-shadow:none;margin:0}.footer,.copyright{position:absolute}}
+    @media print{body{padding:0}.page{box-shadow:none;margin:0}.footer{position:absolute}}
   </style>
 </head>
 <body>
@@ -118,7 +125,6 @@
       <div class="feature-card">
         <h3>Operator Experience</h3>
         <p>Visual scheduling, proactive insights and real-time alerts.</p>
-        <!-- image removed as requested -->
       </div>
     </div>
   </div>
@@ -130,11 +136,10 @@
     <h2 style="font-size:6.5mm;color:var(--accent);font-weight:700;margin-bottom:12mm;">Sustainability Impact Report</h2>
   </div>
 
+  <!-- inner wrapper reserves footer space with padding-bottom -->
   <div class="chart-and-summary">
-    <div style="text-align:center;">
+    <div class="chart-and-summary-inner" style="text-align:center;">
       <div class="chart-title">Run Comparison: Savings & Emissions</div>
-
-      <!-- QuickChart with URL-encoded config (smaller visual height set in CSS) -->
       <img class="chart-img" crossorigin="anonymous" referrerpolicy="no-referrer"
         src="https://quickchart.io/chart?c=%7B%22type%22%3A%22bar%22%2C%22data%22%3A%7B%22labels%22%3A%5B%22Financial%20Savings%22%2C%22CO%E2%82%82%20Reduced%22%5D%2C%22datasets%22%3A%5B%7B%22data%22%3A%5B36900%2C9520%5D%2C%22backgroundColor%22%3A%5B%22%237BE200%22%2C%22%2300E0FF%22%5D%7D%5D%7D%2C%22options%22%3A%7B%22plugins%22%3A%7B%22title%22%3A%7B%22display%22%3Afalse%7D%7D%2C%22scales%22%3A%7B%22y%22%3A%7B%22ticks%22%3A%7B%22color%22%3A%22white%22%7D%2C%22grid%22%3A%7B%22color%22%3A%22%23333%22%7D%7D%7D%7D%7D&backgroundColor=%230b0b0b&w=1100&h=460"
         alt="Chart">
@@ -147,11 +152,11 @@
     </div>
   </div>
 
-  <!-- smaller FOOTER — page 2 only -->
+  <!-- compact footer placed at the bottom; copyright is inside so nothing overlaps content -->
   <div class="footer">
     <div class="brand">
-      <div><div style="font-weight:700;">CARBONSIGHT SCHEDULER</div>
-      <div style="font-size:3.2mm;color:var(--muted);margin-top:4px">Smarter AI. Lower Cost. Less Carbon.</div></div>
+      <div style="font-weight:700;">CARBONSIGHT SCHEDULER</div>
+      <div style="font-size:3.2mm;color:var(--muted);margin-top:4px">Smarter AI. Lower Cost. Less Carbon.</div>
     </div>
 
     <div>
@@ -180,12 +185,12 @@
         <div class="dot">Github</div>
       </div>
     </div>
-  </div>
 
-  <div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
+    <div class="footer-copyright">
+      © 2025 CarbonSight Scheduler | Terms | Privacy | Cookies
+    </div>
+  </div>
 </div>
 
 </body>
 </html>
-
-
