@@ -318,8 +318,8 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
 
     # ----- dynamic values ----------------------------------------------------
     company            = esc(metrics.get("company_name", ""))
-    saved_money        = f"{metrics.get('saved_money', 0.0):,.2f}"
-    co2_reduced        = f"{metrics.get('reduced_emissions_kg_co2', 0.0):,.2f}"
+    saved_money        = f"£{metrics.get('saved_money', 0.0):,.0f}".replace(",", "&nbsp;")
+    co2_reduced        = f"{metrics.get('reduced_emissions_kg_co2', 0.0):,.0f}&nbsp;kg"
     latency_ms         = f"{metrics.get('latency_ms', 0):.0f}"
     score_fmt          = f"{metrics.get('score', 0.0):.2f}"
     region_loc         = esc(metrics.get("region_location", metrics.get("cloud_region", "")))
@@ -383,9 +383,24 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
     .chart-title   { font-size:4.6mm; color:var(--muted); margin-bottom:3mm; }
     .chart-img     { width:100%; max-width:260mm; height:auto; border-radius:3mm; border:1px solid var(--divider); }
 
-    /* ───── AI SUMMARY ───── */
-    .ai-summary { margin-top:5mm; padding:5mm; border:1px solid var(--divider); border-radius:4mm;
-                  background:rgba(255,255,255,0.015); font-size:3.5mm; line-height:1.45; max-height:42mm; overflow:auto; word-wrap:break-word; }
+        /* ───── AI SUMMARY ───── */
+    .ai-summary { 
+      margin-top: 6mm;
+      padding: 5mm;
+      border: 1px solid var(--divider);
+      border-radius: 4mm;
+      background: rgba(255,255,255,0.015);
+      font-size: 3.4mm;           /* slightly smaller = safer */
+      line-height: 1.38;
+      max-height: 38mm;           /* reduced a little */
+      overflow: hidden;           /* changed from auto → hidden */
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 9;      /* max 9 lines */
+      -webkit-box-orient: vertical;
+      word-wrap: break-word;
+      hyphens: auto;              /* helps long words */
+    }
 
     /* ───── FOOTER ───── */
     .footer    { background:var(--footer); padding:5mm 16mm; border-top:1px solid var(--divider);
@@ -421,7 +436,7 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
           </div>
           <div class="stat">
             <div class="label">CO₂<br>Reduction</div>
-            <div class="value">{co2_reduced} kg</div>
+            <div class="value"><span style="white-space:nowrap;">{co2_reduced}</span></div>
           </div>
           <div class="stat">
             <div class="label">Optimisation<br>Score</div>
