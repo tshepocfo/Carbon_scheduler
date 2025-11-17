@@ -413,10 +413,7 @@ def create_charts(metrics: Dict, chart_base: str) -> list:
 # --------------------------------------------------------------------------- #
 #               HTML + PLAYWRIGHT PDF (FINAL)                                 #
 # --------------------------------------------------------------------------- #
-# --------------------------------------------------------------------------- #
-#               HTML + PLAYWRIGHT PDF (FINAL)                                 #
-# --------------------------------------------------------------------------- #
-def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] = None) -> Dict[str, str]:
+def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[str]) -> Dict[str, str]:
     def esc(v: Any) -> str:
         s = "" if v is None else str(v)
         return (
@@ -441,18 +438,12 @@ def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] 
     last_updated = esc(metrics.get("last_updated", ""))
     summary_html = esc(summary or "").replace("\n", "<br/>")
 
-    # Build the chart HTML fragment using assets/chart1.png ... chartN.png
-    chart_img_html = ""
-    try:
-        n = int(chart_count or 0)
-    except Exception:
-        n = 0
-    if n > 0:
-        for i in range(1, n + 1):
-            chart_img_html += (
-                f"<img class='chart-img' src='assets/chart{i}.png' "
-                f"alt='Chart {i}' style='margin-bottom:8mm; display:block;' crossorigin='anonymous' referrerpolicy='no-referrer'/>"
-            )
+    # chart image: prefer provided chart_path (escaped), otherwise empty
+    if chart_path:
+        chart_src = esc(chart_path)
+        chart_img_html = f"<img class='chart-img' src='{chart_src}' alt='Chart' crossorigin='anonymous' referrerpolicy='no-referrer'/>"
+    else:
+        chart_img_html = ""
 
     # ------------------------------------------------------------------------
     css = """
@@ -658,7 +649,6 @@ def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] 
 
 
 
-
 def _render_html_to_pdf_using_playwright(html_path: str, pdf_path: str) -> None:
     try:
         from playwright.sync_api import sync_playwright
@@ -824,13 +814,8 @@ def calculate():
         chart_path    = os.path.join(artifacts_dir, f"{run_id}_chart.png")
         pdf_path      = os.path.join(artifacts_dir, f"{run_id}_report.pdf")
 
-        # create 3 charts
-        chart_base = os.path.join(artifacts_dir, f"{run_id}_chart")
-        chart_files = create_charts(metrics, chart_base)    # returns list of 3 files
-
-        # create PDF; create_pdf now expects chart_files list (so update create_pdf accordingly)
-    create_pdf("Report", metrics, chart_files, pdf_path, summary)
-
+        create_chart(metrics, chart_path)
+        create_pdf("Report", metrics, chart_path, pdf_path, summary)
 
         chart_url = f"/artifact/{run_id}_chart.png"
         pdf_url   = f"/artifact/{run_id}_report.pdf"
