@@ -6,6 +6,84 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     /* ←←← PASTE YOUR ENTIRE CSS FROM _build_pdf_html HERE ←←← */
+    css = """
+    @page { size: 297mm 210mm; margin: 0; }
+    :root {
+      --bg: #0b0b0b;
+      --glass: rgba(255,255,255,0.02);
+      --glass-border: rgba(255,255,255,0.18);
+      --text: #ffffff;
+      --muted: #e0e0e0;
+      --accent: #7BE200;
+      --footer: #0e0e0e;
+      --divider: rgba(255,255,255,0.08);
+      --font: 'Space Grotesk', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; color: var(--text) !important; margin:0; padding:0; }
+    html, body { background:var(--bg); font-family:var(--font); width:297mm; height:210mm; }
+
+    .page      { width:297mm; height:210mm; display:flex; flex-direction:column; }
+    .container { padding:12mm 16mm 0 16mm; flex:1; display:flex; flex-direction:column; }
+    .nav       { display:flex; justify-content:space-between; margin-bottom:6mm; font-size:3.6mm; }
+    .logo .text { font-weight:700; letter-spacing:0.4px; }
+
+    /* ───── HERO ───── */
+    .hero      { display:grid; grid-template-columns:1.4fr 1fr; gap:10mm; margin-bottom:8mm; }
+    .glass     { background:var(--glass); border:1px solid var(--glass-border); border-radius:5mm; padding:10mm; }
+    .headline  { font-size:15mm; font-weight:700; line-height:1.1; margin-bottom:4mm; }
+    .sub       { font-size:4.4mm; color:var(--muted); margin-bottom:6mm; }
+
+    /* ───── STATS (centred, two-line labels) ───── */
+    .stats     { display:grid; grid-template-columns:repeat(3,1fr); gap:5mm; }
+    .stat      { padding:4mm 2mm; border:1px solid var(--divider); border-radius:4mm; text-align:center; background:rgba(255,255,255,0.015); }
+    .stat .label { font-size:3.2mm; line-height:1.2; margin-bottom:1.5mm; }
+    .stat .value { font-size:6.5mm; font-weight:600; color:var(--accent); line-height:1.1; }
+
+    /* ───── HERO RIGHT – image first, meta card underneath ───── */
+    .hero-right { display:flex; flex-direction:column; height:70mm; }
+    .hero-img   { flex:1; width:100%; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); }
+    .meta-card  {
+      margin-top:30mm; padding:5mm; background:var(--glass);
+      border:1px solid var(--glass-border); border-radius:4mm;
+      font-size:3.3mm; line-height:1.4;
+    }
+
+    /* ───── FEATURES ───── */
+    .features   { display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin-bottom:6mm; }
+    .feature-img { width:100%; height:auto; max-height:38mm; object-fit:cover; border-radius:4mm; margin-top:4mm; border:1px solid var(--glass-border); }
+
+    /* ───── CHART ───── */
+    .chart-section { margin:10mm 20mm 8mm 20mm; flex-shrink:0; }
+    .chart-title   { font-size:4.8mm; color:var(--muted); margin-bottom:3mm; }
+    .chart-img     { width:100%; max-width:220mm; height:auto; border-radius:6mm; border:1px solid var(--divider); }
+
+        /* ───── AI SUMMARY ───── */
+    .ai-summary { 
+      margin-top: 6mm;
+      padding: 5mm;
+      border: 1px solid var(--divider);
+      border-radius: 4mm;
+      background: rgba(255,255,255,0.015);
+      font-size: 3.4mm;           /* slightly smaller = safer */
+      line-height: 1.38;
+      max-height: 38mm;           /* reduced a little */
+      overflow: hidden;           /* changed from auto → hidden */
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 9;      /* max 9 lines */
+      -webkit-box-orient: vertical;
+      word-wrap: break-word;
+      hyphens: auto;              /* helps long words */
+    }
+
+    /* ───── FOOTER ───── */
+    .footer    { background:var(--footer); padding:5mm 16mm; border-top:1px solid var(--divider);
+                 display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr; gap:8mm; font-size:3.5mm; flex-shrink:0; }
+    .copyright { text-align:center; padding:3mm 0; font-size:3.2mm; color:var(--muted);
+                 border-top:1px solid var(--divider); margin:0 16mm; }
+    """
+
+    # ------------------------------------------------------------------------
     @page { size: 297mm 210mm; margin: 0; }
     :root { --bg: #0b0b0b; --accent: #7BE200; /* etc */ }
     /* ... all your CSS ... */
