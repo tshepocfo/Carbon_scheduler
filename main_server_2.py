@@ -676,10 +676,11 @@ def _render_html_to_pdf_using_playwright(html_path: str, pdf_path: str) -> None:
             raise
 
 
-def create_pdf(title: str, metrics: Dict, chart_path: str, output_pdf_path: str, summary: Optional[str] = None) -> None:
-    built = _build_pdf_html(metrics, chart_path, summary)
-    html_str = built["html"]
-
+def create_pdf(title: str, metrics: Dict, chart_files: list, output_pdf_path: str, summary: Optional[str] = None) -> None:
+    """
+    chart_files: list of local PNG files created earlier (paths)
+    """
+    # build workdir & assets
     artifacts_dir = ensure_artifacts_dir()
     run_id = uuid.uuid4().hex[:10]
     workdir = Path(artifacts_dir) / f"html_report_{run_id}"
@@ -687,9 +688,13 @@ def create_pdf(title: str, metrics: Dict, chart_path: str, output_pdf_path: str,
     workdir.mkdir(parents=True, exist_ok=True)
     assets_dir.mkdir(exist_ok=True)
 
-    if chart_path and os.path.exists(chart_path):
-        shutil.copy(chart_path, assets_dir / "chart.png")
+    # Copy provided chart files into assets/chart1.png, chart2.png, chart3.png ...
+    for i, src in enumerate(chart_files, start=1):
+        if src and os.path.exists(src):
+            dst = assets_dir / f"chart{i}.png"
+            shutil.copy(src, dst)
 
+    # copy other static images (hero, etc.)
     repo_assets = Path(__file__).parent / "static" / "assets"
     for img in ["hero-datacenter.jpg", "laptop-dark-ui.jpg"]:
         src = repo_assets / img
@@ -697,8 +702,15 @@ def create_pdf(title: str, metrics: Dict, chart_path: str, output_pdf_path: str,
         if src.exists():
             shutil.copy(src, dst)
 
+    # Build HTML now that assets exist (pass chart count)
+    built = _build_pdf_html(metrics, chart_count=len(chart_files), summary=summary)
+    html_str = built["html"]
+
     (workdir / "index.html").write_text(html_str, encoding="utf-8")
+
+    # Render to PDF (same Playwright helper you have)
     _render_html_to_pdf_using_playwright(str(workdir / "index.html"), output_pdf_path)
+
 
 
 # --------------------------------------------------------------------------- #
