@@ -781,7 +781,7 @@ def calculate():
         # ------------------------------------------------------------------- #
         # === AI SUMMARY – GEMINI ONLY ======================================= #
         # ------------------------------------------------------------------- #
-        summary  = "AI summary temporarily unavailable."
+        summary = "AI summary temporarily unavailable."
         ai_error = None
 
         gemini_key = os.getenv("GEMINI_API_KEY")
@@ -815,25 +815,26 @@ def calculate():
             except Exception as e:
                 ai_error = str(e)
                 log.warning(f"Gemini failed: {e}")
-                
+
         # ------------------------------------------------------------------- #
         # === CHART + PDF ===
         # ------------------------------------------------------------------- #
         artifacts_dir = ensure_artifacts_dir()
-        run_id        = uuid.uuid4().hex[:12]
-        chart_path    = os.path.join(artifacts_dir, f"{run_id}_chart.png")
-        pdf_path      = os.path.join(artifacts_dir, f"{run_id}_report.pdf")
+        run_id = uuid.uuid4().hex[:12]
+        pdf_path = os.path.join(artifacts_dir, f"{run_id}_report.pdf")
 
-        # create 3 charts
+        # create 3 charts (chart_base -> artifacts/<runid>_chart)
         chart_base = os.path.join(artifacts_dir, f"{run_id}_chart")
         chart_files = create_charts(metrics, chart_base)    # returns list of 3 files
 
-        # create PDF; create_pdf now expects chart_files list (so update create_pdf accordingly)
-    create_pdf("Report", metrics, chart_files, pdf_path, summary)
+        # create PDF; create_pdf expects chart_files list
+        create_pdf("Report", metrics, chart_files, pdf_path, summary)
 
-
-        chart_url = f"/artifact/{run_id}_chart.png"
-        pdf_url   = f"/artifact/{run_id}_report.pdf"
+        # expose first chart for quick preview; pdf url for download
+        # chart_files typically: <runid>_chart_cost.png, _emissions.png, _radar.png
+        chart_preview_name = os.path.basename(chart_files[0]) if chart_files else f"{run_id}_chart_cost.png"
+        chart_url = f"/artifact/{chart_preview_name}"
+        pdf_url = f"/artifact/{run_id}_report.pdf"
 
         return jsonify({
             "ok": True,
@@ -847,6 +848,7 @@ def calculate():
     except Exception as e:
         log.exception("Error")
         return jsonify({"ok": False, "error": "internal_error"}), 500
+
 
 
 @app.get("/artifact/<path:filename>")
