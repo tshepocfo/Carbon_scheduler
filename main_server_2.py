@@ -586,22 +586,19 @@ def calculate():
         )
 
         # ------------------------------------------------------------------- #
-        # === AI SUMMARY – GROK ONLY ========================================= #
+        # === AI SUMMARY – GEMINI ONLY ======================================= #
         # ------------------------------------------------------------------- #
         summary  = "AI summary temporarily unavailable."
         ai_error = None
 
-        xai_key = os.getenv("XAI_API_KEY")
-        if not xai_key:
-            ai_error = "XAI_API_KEY not set"
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        if not gemini_key:
+            ai_error = "GEMINI_API_KEY not set"
             log.warning(ai_error)
         else:
             try:
-                import openai
-                client = openai.OpenAI(
-                    api_key=xai_key,
-                    base_url="https://api.x.ai/v1",   # <-- Grok endpoint
-                )
+                import google.generativeai as genai
+                genai.configure(api_key=gemini_key)
 
                 prompt = f"""
                 Write a concise, professional 120–150 word sustainability impact report for:
@@ -617,19 +614,15 @@ def calculate():
                 Use positive, forward-looking tone. No disclaimers.
                 """
 
-                response = client.chat.completions.create(
-                    model="grok-beta",                 # <-- Grok model
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=280,
-                    temperature=0.7,
-                )
-                raw_summary = response.choices[0].message.content.strip()
+                model = genai.GenerativeModel('gemini-2.5-flash')  # Free, fast model
+                response = model.generate_content(prompt)          # Plain text prompt
+                raw_summary = response.text.strip()
                 summary = textwrap.fill(raw_summary, width=90)
 
             except Exception as e:
                 ai_error = str(e)
-                log.warning(f"Grok failed: {e}")
-
+                log.warning(f"Gemini failed: {e}")
+                
         # ------------------------------------------------------------------- #
         # === CHART + PDF ===
         # ------------------------------------------------------------------- #
