@@ -91,6 +91,87 @@
 </head>
 <body>
   <!-- ←←← PASTE THE ENTIRE HTML FROM YOUR _build_pdf_html function here ←←← -->
+  html = f"""<!doctype html>
+<html><head><meta charset="utf-8"><title>Report</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');</style>
+<style>{css}</style></head><body>
+<div class="page">
+  <div class="container">
+    <!-- NAV -->
+    <div class="nav">
+      <div class="logo"><div class="text">CARBONSIGHT SCHEDULER</div></div>
+      <div class="nav-menu">Solutions | About Us | Blog | Support</div>
+    </div>
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="glass hero-left">
+        <div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
+        <div class="sub">Precision scheduling aligned to carbon intensity and spot market efficiency.</div>
+
+        <!-- STATS – two-line, perfectly centred -->
+        <div class="stats">
+          <div class="stat">
+            <div class="label">Financial<br>Savings</div>
+            <div class="value">{saved_money}</div>
+          </div>
+          <div class="stat">
+            <div class="label">CO₂<br>Reduction</div>
+            <div class="value"><span style="white-space:nowrap;">{co2_reduced}</span></div>
+          </div>
+          <div class="stat">
+            <div class="label">Optimisation<br>Score</div>
+            <div class="value">{score_fmt}/1.0</div>
+          </div>
+        </div>
+
+        <div class="ai-summary">{summary_html}</div>
+      </div>
+
+      <!-- RIGHT SIDE – image first, meta card below -->
+      <div class="hero-right">
+        <img class="hero-img" src="assets/hero-datacenter.jpg" alt="Data Center"/>
+        <div class="meta-card">
+          <h4 style="margin:0 0 3mm;font-size:3.8mm;">Deployment Meta</h4>
+          <div class="meta">Company: {company} • Region: {region_loc} • Latency: {latency_ms} ms</div>
+          <div class="meta">Workload: {workload} • GPU Hours: {gpu_hours} • CI: {carbon_intensity_fmt} gCO₂e/kWh</div>
+          <div class="meta">Last Updated: {last_updated}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEATURES -->
+    <div class="features">
+      <div class="glass feature">
+        <h3>Carbon-Aware Orchestration</h3>
+        <p>Dynamically shifts workloads to lower carbon regions and optimises for spot pricing.</p>
+      </div>
+      <div class="glass feature">
+        <h3>Operator Experience</h3>
+        <p>Visual scheduling, proactive insights and real-time alerts.</p>
+        <img class="feature-img" src="assets/laptop-dark-ui.jpg" alt="UI"/>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="chart-section">
+      <div class="chart-title">Run Comparison: Savings and Emissions</div>
+      {chart_img_html}
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="brand"><div><div style="font-weight:700;">CARBONSIGHT SCHEDULER</div><div style="font-size:3.2mm;">Smarter AI. Lower Cost. Less Carbon.</div></div></div>
+    <div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li><li>Cost Insights</li></ul></div>
+    <div><h5>Company</h5><ul><li>About</li><li>Blog</li><li>Careers</li></ul></div>
+    <div><h5>Connect</h5><div class="social"><div class="dot">Instagram</div><div class="dot">LinkedIn</div><div class="dot">Github</div></div></div>
+  </div>
+  <div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
+</div>
+</body></html>"""
+
+    return {"html": html, "css": css.strip()}
   <div class="page"> … your full HTML … </div>
 </body>
 </html>
