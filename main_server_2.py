@@ -369,7 +369,7 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
     .hero-right { display:flex; flex-direction:column; height:70mm; }
     .hero-img   { flex:1; width:100%; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); }
     .meta-card  {
-      margin-top:20mm; padding:5mm; background:var(--glass);
+      margin-top:30mm; padding:5mm; background:var(--glass);
       border:1px solid var(--glass-border); border-radius:4mm;
       font-size:3.3mm; line-height:1.4;
     }
@@ -379,9 +379,9 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
     .feature-img { width:100%; height:auto; max-height:38mm; object-fit:cover; border-radius:4mm; margin-top:4mm; border:1px solid var(--glass-border); }
 
     /* ───── CHART ───── */
-    .chart-section { margin:0 16mm 6mm 16mm; flex-shrink:0; }
-    .chart-title   { font-size:4.6mm; color:var(--muted); margin-bottom:3mm; }
-    .chart-img     { width:100%; max-width:260mm; height:auto; border-radius:3mm; border:1px solid var(--divider); }
+    .chart-section { margin:10mm 20mm 8mm 20mm; flex-shrink:0; }
+    .chart-title   { font-size:4.8mm; color:var(--muted); margin-bottom:3mm; }
+    .chart-img     { width:100%; max-width:220mm; height:auto; border-radius:6mm; border:1px solid var(--divider); }
 
         /* ───── AI SUMMARY ───── */
     .ai-summary { 
@@ -432,7 +432,7 @@ def _build_pdf_html(metrics: Dict, chart_path: Optional[str], summary: Optional[
         <div class="stats">
           <div class="stat">
             <div class="label">Financial<br>Savings</div>
-            <div class="value">£{saved_money}</div>
+            <div class="value">{saved_money}</div>
           </div>
           <div class="stat">
             <div class="label">CO₂<br>Reduction</div>
