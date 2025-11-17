@@ -418,7 +418,159 @@ def create_charts(metrics: Dict, chart_base: str) -> list:
 # --------------------------------------------------------------------------- #
 def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] = None) -> Dict[str, str]:
     # THIS IS YOUR EXACT HTML — NO CHANGES AT ALL
-    html = 
+    html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CarbonSight Scheduler – Live PDF Preview (2 Pages)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page { size: 297mm 210mm; margin: 0; }
+    :root{
+      --bg:#0b0b0b;
+      --glass:rgba(255,255,255,0.02);
+      --glass-border:rgba(255,255,255,0.18);
+      --text:#fff;
+      --muted:#e0e0e0;
+      --accent:#7BE200;
+      --footer-bg:#0e0e0e;
+      --divider:rgba(255,255,255,0.08);
+      --footer-height:22mm;
+      --page-padding-vertical:12mm;
+      --page-padding-horizontal:16mm;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;color:var(--text)!important}
+    body{background:#000;font-family:'Space Grotesk',sans-serif;padding:40px 0}
+    .page{
+      width:297mm;height:210mm;background:var(--bg);margin:0 auto 40px auto;
+      box-shadow:0 0 30px rgba(0,0,0,0.8);display:flex;flex-direction:column;
+      position:relative;page-break-after:always;overflow:hidden;
+      padding: calc(var(--page-padding-vertical)) calc(var(--page-padding-horizontal));
+    }
+    .page .content { flex: 1 1 auto; overflow: hidden; display:flex; flex-direction:column; gap:8mm; }
+    .page .content-inner { overflow:auto; padding-right:4mm; }
+    .footer { flex: 0 0 var(--footer-height); background:var(--footer-bg); padding:6mm 12mm; border-top:1px solid var(--divider); display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:10mm; align-items:start; font-size:3.0mm; }
+    .footer .brand{font-weight:700}
+    .footer h5{font-size:3.8mm;margin-bottom:6px;color:var(--text)}
+    .footer ul{list-style:none;margin:0;padding:0;line-height:1.8;font-size:3mm;color:var(--muted)}
+    .footer ul li{margin-bottom:3px}
+    .social{display:flex;gap:8px;flex-wrap:wrap}
+    .dot{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:999px;font-size:3mm;color:var(--muted)}
+    .footer .copyright { grid-column: 1 / -1; text-align:center; font-size:2.9mm; color:var(--muted); margin-top:6px }
+    .nav{display:flex;justify-content:space-between;margin-bottom:6mm;font-size:3.6mm;font-weight:600}
+    .hero{display:grid;grid-template-columns:1.3fr 1fr;gap:8mm;margin-bottom:6mm}
+    .glass{background:var(--glass);border:1px solid var(--glass-border);border-radius:7mm;padding:12mm}
+    .headline{font-size:13mm;font-weight:700;line-height:1.05;margin-bottom:3mm}
+    .sub{font-size:4.1mm;color:var(--muted);margin-bottom:6mm}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7mm;margin-top:5mm}
+    .stat{background:rgba(255,255,255,0.04);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.12);border-radius:7mm;padding:8mm 6mm;text-align:center;display:flex;flex-direction:column;justify-content:center;min-height:34mm}
+    .stat .label{font-size:3.2mm;color:var(--muted);margin-bottom:3mm}
+    .stat .value{font-size:8.4mm;font-weight:700;color:var(--accent);white-space:nowrap}
+    .hero-right img{width:100%;height:60mm;object-fit:cover;border-radius:4mm;border:1px solid var(--glass-border);display:block}
+    .meta-card{margin-top:10mm;padding:6mm;background:var(--glass);border:1px solid var(--glass-border);border-radius:5mm;font-size:3.2mm;line-height:1.45}
+    .features{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:6mm}
+    .feature-card{background:var(--glass);border:1px solid var(--glass-border);border-radius:7mm;padding:8mm;min-height:36mm;display:flex;flex-direction:column;justify-content:flex-start}
+    .feature-card h3{font-size:4.6mm;margin-bottom:3mm}
+    .feature-card p{font-size:3.6mm;color:var(--muted);line-height:1.45}
+    .chart-and-summary { display:flex; gap:16mm; align-items:flex-start; }
+    .chart-column { flex: 1 1 60%; }
+    .summary-column { flex: 1 1 40%; min-width:90mm; }
+    .chart-title{font-size:5.2mm;color:var(--muted);margin-bottom:10mm;font-weight:600;text-align:left; padding-left:6mm}
+    .chart-img{width:100%;height:60mm;border-radius:8mm;border:1px solid var(--divider);box-shadow:0 4mm 16mm rgba(0,0,0,0.5);display:block;object-fit:cover}
+    .ai-summary-full{background:rgba(255,255,255,0.04);border:1px solid var(--divider);border-radius:8mm;padding:12mm;font-size:4.1mm;line-height:1.56;backdrop-filter:blur(6px);height:100%;box-sizing:border-box;overflow:hidden}
+    .ai-summary-full strong{font-size:5.2mm;color:var(--accent);display:block;margin-bottom:8mm}
+    .page:first-of-type .footer { display:none; }
+    img{display:block;max-width:100%;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact;image-rendering:-webkit-optimize-contrast;page-break-inside:avoid}
+    .glass, .stat, .feature-card, .ai-summary-full{page-break-inside:avoid}
+    @media print { body{padding:0} .page{box-shadow:none;margin:0} }
+  </style>
+</head>
+<body>
+<!-- PAGE 1 -->
+<div class="page">
+  <div class="content">
+    <div class="content-inner">
+      <div class="nav">
+        <div class="logo">CARBONSIGHT SCHEDULER</div>
+        <div>Solutions | About Us | Blog | Support</div>
+      </div>
+      <div class="hero">
+        <div class="glass">
+          <div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
+          <div class="sub">Precision scheduling aligned to carbon intensity and spot market efficiency.</div>
+          <div class="stats">
+            <div class="stat"><div class="label">Financial<br>Savings</div><div class="value">£{{saved_money}}</div></div>
+            <div class="stat"><div class="label">CO₂<br>Reduction</div><div class="value">{{reduced_co2}} kg</div></div>
+            <div class="stat"><div class="label">Optimisation<br>Score</div><div class="value">{{score}}/1.0</div></div>
+          </div>
+        </div>
+        <div class="hero-right">
+          <img crossorigin="anonymous" referrerpolicy="no-referrer" src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop&auto=format" alt="Data Center">
+          <div class="meta-card">
+            <strong style="font-size:3.8mm;">Deployment Meta</strong><br>
+            Company: {{company}} • Region: {{region}} • Latency: {{latency}} ms<br>
+            Workload: {{workload}} • GPU Hours: {{gpu_hours}} • CI: {{ci}} gCO₂e/kWh<br>
+            Last Updated: {{date}}
+          </div>
+        </div>
+      </div>
+      <div class="features">
+        <div class="feature-card">
+          <h3>Carbon-Aware Orchestration</h3>
+          <p>Dynamically shifts workloads to lower carbon regions and optimises for spot pricing.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Operator Experience</h3>
+          <p>Visual scheduling, proactive insights and real-time alerts.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer" aria-hidden="true">
+      <div class="brand">
+        <div style="font-weight:700;">CARBONSIGHT SCHEDULER</div>
+        <div style="font-size:3.2mm;color:var(--muted);margin-top:4px">Smarter AI. Lower Cost. Less Carbon.</div>
+      </div>
+      <div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li><li>Cost Insights</li></ul></div>
+      <div><h5>Company</h5><ul><li>About</li><li>Blog</li><li>Careers</li></ul></div>
+      <div><h5>Connect</h5><div class="social"><div class="dot">Instagram</div><div class="dot">LinkedIn</div><div class="dot">Github</div></div></div>
+    </div>
+  </div>
+</div>
+<!-- PAGE 2 -->
+<div class="page">
+  <div class="content">
+    <div class="content-inner">
+      <div style="text-align:center;margin-bottom:8mm;">
+        <h2 style="font-size:6.5mm;color:var(--accent);font-weight:700;margin:0;">Sustainability Impact Report</h2>
+      </div>
+      <div class="chart-and-summary">
+        <div class="chart-column">
+          <div class="chart-title">Run Comparison: Savings & Emissions</div>
+          {{chart_image}}
+        </div>
+        <div class="summary-column">
+          <div class="ai-summary-full">
+            <strong>Sustainability Impact Summary</strong>
+            {{summary}}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <div class="brand">
+        <div style="font-weight:700;">CARBONSIGHT SCHEDULER</div>
+        <div style="font-size:3.2mm;color:var(--muted);margin-top:4px">Smarter AI. Lower Cost. Less Carbon.</div>
+      </div>
+      <div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li><li>Cost Insights</li></ul></div>
+      <div><h5>Company</h5><ul><li>About</li><li>Blog</li><li>Careers</li></ul></div>
+      <div><h5>Connect</h5><div class="social"><div class="dot">Instagram</div><div class="dot">LinkedIn</div><div class="dot">Github</div></div></div>
+      <div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>"""
 
     # Replace placeholders
     saved_money = f"£{metrics.get('saved_money', 0):,.0f}".replace(",", " ")
