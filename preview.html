@@ -129,20 +129,28 @@
       </div>
     </div>
 
-    <!-- CHART + AI SUMMARY SIDE BY SIDE -->
+    <!-- ==================== PAGE 2 – CHART + AI SUMMARY ==================== -->
+  <div class="page2">
+    <div style="font-size:6mm; color:var(--accent); font-weight:700; margin-bottom:12mm; text-align:center;">
+      Sustainability Impact Report
+    </div>
+
     <div class="chart-and-summary">
+      <!-- Left: Chart -->
       <div class="chart-section">
-        <div class="chart-title">Run Comparison: Savings and Emissions</div>
-        <img class="chart-img" src="https://quickchart.io/chart?c={type:'bar',data:{labels:['Financial%20Savings','CO%E2%82%82%20Reduced'],datasets:[{data:[36900,9520],backgroundColor:['#7BE200','#00D4FF']}]},options:{plugins:{title:{display:true,text:'Impact%20Comparison',color:'white'}},scales:{y:{ticks:{color:'white'},grid:{color:'#333'}}}}}&backgroundColor=%230b0b0b&w=1000&h=420" alt="Chart">
+        <div class="chart-title">Run Comparison: Savings & Emissions</div>
+        {chart_img_html}
       </div>
 
-      <div class="ai-summary-box">
-        Test Corp is proud to report significant sustainability achievements for its 100,000 GPU hours of inference workload in the EU (Stockholm) region. Through strategic resource optimization, including the effective utilization of spot instances, we realized substantial financial savings of £36,900. This initiative also delivered a remarkable CO₂ reduction of 9,520 kg compared to baseline operations, demonstrating our commitment to environmental stewardship. Our infrastructure now operates with an impressive carbon intensity of just 24.0 gCO₂e/kWh, reflected in an optimization score of 0.79/1.0.<br><br>
-        Crucially, these sustainability gains were achieved while maintaining optimal performance and negligible latency impact for our critical inference tasks. Test Corp remains dedicated to pioneering environmentally responsible practices, driving both ecological benefits and operational efficiency.
+      <!-- Right: Full AI Summary (no cutoff, perfect formatting) -->
+      <div class="ai-summary-full">
+        <strong>Sustainability Impact Summary</strong>
+        {summary_html}
       </div>
     </div>
   </div>
 
+  <!-- FOOTER (still on page 2) -->
   <div class="footer">
     <div><strong>CARBONSIGHT SCHEDULER</strong><br><small>Smarter AI. Lower Cost. Less Carbon.</small></div>
     <div><strong>Products</strong><br>Scheduler · Carbon Intelligence · Cost Insights</div>
@@ -151,6 +159,5 @@
   </div>
   <div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
 </div>
-
-</body>
-</html>
+</body></html>
+    
