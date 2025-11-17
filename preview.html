@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>CarbonSight Scheduler – Live PDF Preview (2 Pages)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     @page { size: 297mm 210mm; margin: 0; }
@@ -16,6 +17,8 @@
       --footer-bg: #0e0e0e;
       --divider: rgba(255,255,255,0.08);
     }
+
+    /* reset / base */
     * { box-sizing: border-box; margin:0; padding:0; color: var(--text)!important; }
     body { background:#000; font-family: 'Space Grotesk', sans-serif; padding:40px 0; }
     .page {
@@ -40,10 +43,10 @@
     .stat { background:rgba(255,255,255,0.04); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.12); border-radius:7mm; padding:10mm 6mm; text-align:center; display:flex; flex-direction:column; justify-content:center; min-height:38mm; }
     .stat .label { font-size:3.4mm; color:var(--muted); margin-bottom:4mm; }
     .stat .value { font-size:9.2mm; font-weight:700; color:var(--accent); white-space:nowrap; }
-    .hero-right img { width:100%; height:70mm; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); }
+    .hero-right img { width:100%; height:70mm; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); display:block; }
     .meta-card { margin-top:12mm; padding:7mm; background:var(--glass); border:1px solid var(--glass-border); border-radius:5mm; font-size:3.3mm; line-height:1.5; }
     .features { display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin-top:10mm; }
-    .feature-img { width:100%; height:38mm; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); margin-top:4mm; }
+    .feature-img { width:100%; height:38mm; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); margin-top:4mm; display:block; }
 
     /* PAGE 2 */
     .chart-and-summary {
@@ -54,7 +57,7 @@
       align-items: start;
     }
     .chart-title { font-size:5.2mm; color:var(--muted); margin-bottom:10mm; font-weight:600; text-align:center; }
-    .chart-img { width:100%; max-width:215mm; height:auto; border-radius:8mm; border:1px solid var(--divider); box-shadow:0 4mm 16mm rgba(0,0,0,0.5); }
+    .chart-img { width:100%; max-width:215mm; height:auto; border-radius:8mm; border:1px solid var(--divider); box-shadow:0 4mm 16mm rgba(0,0,0,0.5); display:block; }
     .ai-summary-full {
       background: rgba(255,255,255,0.04);
       border: 1px solid var(--divider);
@@ -66,7 +69,7 @@
     }
     .ai-summary-full strong { font-size:5.5mm; color:var(--accent); display:block; margin-bottom:10mm; }
 
-    /* FOOTER – ONLY ON PAGE 2, FIXED AT BOTTOM */
+    /* FOOTER – ONLY ON PAGE 2, FIXED AT BOTTOM (anchored to .page which is position:relative) */
     .footer {
       position: absolute;
       bottom: 0;
@@ -92,6 +95,37 @@
       border-top: 1px solid var(--divider);
       background: var(--footer-bg);
     }
+
+    /* ===================== PRINT / PDF FRIENDLY RULES ===================== */
+
+    /* Make sure the first page cannot accidentally show a footer */
+    .page:first-of-type .footer,
+    .page:first-of-type .copyright {
+      display: none !important;
+    }
+
+    /* Ensure images are preserved when printing to PDF */
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      image-rendering: -webkit-optimize-contrast;
+      page-break-inside: avoid;
+    }
+
+    /* Avoid splitting important blocks across pages */
+    .glass, .ai-summary-full, .hero, .features, .chart-and-summary {
+      page-break-inside: avoid;
+    }
+
+    /* Some PDF generators respect these print rules */
+    @media print {
+      body { padding:0; }
+      .page { box-shadow:none; margin:0; }
+      .footer, .copyright { position:absolute; }
+    }
   </style>
 </head>
 <body>
@@ -116,7 +150,8 @@
       </div>
 
       <div class="hero-right">
-        <img src="https://images.unsplash.com/photo-1625314885476-977577e2f2bc?w=1200&h=800&fit=crop&auto=format" alt="Data Center">
+        <!-- added crossorigin & referrerpolicy for more robust remote image loading -->
+        <img crossorigin="anonymous" referrerpolicy="no-referrer" src="https://images.unsplash.com/photo-1625314885476-977577e2f2bc?w=1200&h=800&fit=crop&auto=format" alt="Data Center">
         <div class="meta-card">
           <strong style="font-size:3.8mm;">Deployment Meta</strong><br>
           Company: Test Corp • Region: EU (Stockholm) • Latency: 78 ms<br>
@@ -134,7 +169,7 @@
       <div class="glass">
         <h3 style="font-size:4.8mm; margin-bottom:3mm;">Operator Experience</h3>
         <p>Visual scheduling, proactive insights and real-time alerts.</p>
-        <img class="feature-img" src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop&auto=format" alt="UI">
+        <img class="feature-img" crossorigin="anonymous" referrerpolicy="no-referrer" src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop&auto=format" alt="UI">
       </div>
     </div>
   </div>
@@ -151,7 +186,10 @@
   <div class="chart-and-summary">
     <div style="text-align:center;">
       <div class="chart-title">Run Comparison: Savings & Emissions</div>
-      <img class="chart-img" src="https://quickchart.io/chart?c={type:'bar',data:{labels:['Financial%20Savings','CO%E2%82%82%20Reduced'],datasets:[{data:[36900,9520],backgroundColor:['#7BE200','#00E0FF']}]},options:{plugins:{title:{display:false}},scales:{y:{ticks:{color:'white'},grid:{color:'#333'}}}}}&backgroundColor=%230b0b0b&w=1100&h=460" alt="Chart">
+      <!-- quickchart external image: keep crossorigin/referrerpolicy to reduce blocking -->
+      <img class="chart-img" crossorigin="anonymous" referrerpolicy="no-referrer"
+        src="https://quickchart.io/chart?c={type:'bar',data:{labels:['Financial%20Savings','CO%E2%82%82%20Reduced'],datasets:[{data:[36900,9520],backgroundColor:['#7BE200','#00E0FF']}]},options:{plugins:{title:{display:false}},scales:{y:{ticks:{color:'white'},grid:{color:'#333'}}}}}&backgroundColor=%230b0b0b&w=1100&h=460"
+        alt="Chart">
     </div>
 
     <div class="ai-summary-full">
