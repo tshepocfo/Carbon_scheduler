@@ -829,7 +829,7 @@ def calculate():
         chart_files = create_charts(metrics, chart_base)    # returns list of 3 files
 
         # create PDF; create_pdf now expects chart_files list (so update create_pdf accordingly)
-          create_pdf("Report", metrics, chart_files, pdf_path, summary)
+    create_pdf("Report", metrics, chart_files, pdf_path, summary)
 
 
         chart_url = f"/artifact/{run_id}_chart.png"
