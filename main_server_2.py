@@ -417,15 +417,45 @@ def create_charts(metrics: Dict, chart_base: str) -> list:
 #               HTML + PLAYWRIGHT PDF (FINAL)                                 #
 # --------------------------------------------------------------------------- #
 def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] = None) -> Dict[str, str]:
-    # THIS IS YOUR EXACT HTML — NO CHANGES AT ALL
-    html = """<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>CarbonSight Scheduler – Live PDF Preview (2 Pages)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
+    def esc(v: Any) -> str:
+        s = "" if v is None else str(v)
+        return (
+            s.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&#x27;")
+        )
+
+    # ----- dynamic values ----------------------------------------------------
+    company = esc(metrics.get("company_name", ""))
+    saved_money = f"£{metrics.get('saved_money', 0.0):,.0f}".replace(",", "&nbsp;")
+    co2_reduced = f"{metrics.get('reduced_emissions_kg_co2', 0.0):,.0f}&nbsp;kg"
+    latency_ms = f"{metrics.get('latency_ms', 0):.0f}"
+    score_fmt = f"{metrics.get('score', 0.0):.2f}"
+    region_loc = esc(metrics.get("region_location", metrics.get("cloud_region", "")))
+    workload = esc(metrics.get("workload_type", ""))
+    gpu_hours = esc(metrics.get("gpu_hours", ""))
+    carbon_intensity = metrics.get("carbon_intensity_gco2_kwh")
+    carbon_intensity_fmt = "" if carbon_intensity is None else f"{float(carbon_intensity):.1f}"
+    last_updated = esc(metrics.get("last_updated", ""))
+    summary_html = esc(summary or "").replace("\n", "<br/>")
+
+    # Build the chart HTML fragment using assets/chart1.png ... chartN.png
+    chart_img_html = ""
+    try:
+        n = int(chart_count or 0)
+    except Exception:
+        n = 0
+    if n > 0:
+        for i in range(1, n + 1):
+            chart_img_html += (
+                f"<img class='chart-img' src='assets/chart{i}.png' "
+                f"alt='Chart {i}' style='margin-bottom:8mm; display:block;' crossorigin='anonymous' referrerpolicy='no-referrer'/>"
+            )
+
+    # ------------------------------------------------------------------------
+    css = """
     @page { size: 297mm 210mm; margin: 0; }
     :root{
       --bg:#0b0b0b;
@@ -439,18 +469,24 @@ def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] 
       --footer-height:22mm;
       --page-padding-vertical:12mm;
       --page-padding-horizontal:16mm;
+      --font: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     }
+
+    /* reset */
     *{box-sizing:border-box;margin:0;padding:0;color:var(--text)!important}
-    body{background:#000;font-family:'Space Grotesk',sans-serif;padding:40px 0}
+    body{background:#000;font-family:var(--font);padding:40px 0}
     .page{
-      width:297mm;height:210mm;background:var(--bg);margin:0 auto 40px auto;
-      box-shadow:0 0 30px rgba(0,0,0,0.8);display:flex;flex-direction:column;
-      position:relative;page-break-after:always;overflow:hidden;
+      width:297mm; height:210mm; background:var(--bg); margin:0 auto 40px auto;
+      box-shadow:0 0 30px rgba(0,0,0,0.8);
+      display:flex; flex-direction:column; position:relative; page-break-after:always; overflow:hidden;
       padding: calc(var(--page-padding-vertical)) calc(var(--page-padding-horizontal));
     }
+
     .page .content { flex: 1 1 auto; overflow: hidden; display:flex; flex-direction:column; gap:8mm; }
     .page .content-inner { overflow:auto; padding-right:4mm; }
-    .footer { flex: 0 0 var(--footer-height); background:var(--footer-bg); padding:6mm 12mm; border-top:1px solid var(--divider); display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:10mm; align-items:start; font-size:3.0mm; }
+
+    .footer { flex: 0 0 var(--footer-height); background:var(--footer-bg); padding:6mm 12mm; border-top:1px solid var(--divider);
+             display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:10mm; align-items:start; font-size:3.0mm; }
     .footer .brand{font-weight:700}
     .footer h5{font-size:3.8mm;margin-bottom:6px;color:var(--text)}
     .footer ul{list-style:none;margin:0;padding:0;line-height:1.8;font-size:3mm;color:var(--muted)}
@@ -458,6 +494,8 @@ def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] 
     .social{display:flex;gap:8px;flex-wrap:wrap}
     .dot{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:999px;font-size:3mm;color:var(--muted)}
     .footer .copyright { grid-column: 1 / -1; text-align:center; font-size:2.9mm; color:var(--muted); margin-top:6px }
+
+    /* header / hero / features (kept compact) */
     .nav{display:flex;justify-content:space-between;margin-bottom:6mm;font-size:3.6mm;font-weight:600}
     .hero{display:grid;grid-template-columns:1.3fr 1fr;gap:8mm;margin-bottom:6mm}
     .glass{background:var(--glass);border:1px solid var(--glass-border);border-radius:7mm;padding:12mm}
@@ -467,12 +505,16 @@ def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] 
     .stat{background:rgba(255,255,255,0.04);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.12);border-radius:7mm;padding:8mm 6mm;text-align:center;display:flex;flex-direction:column;justify-content:center;min-height:34mm}
     .stat .label{font-size:3.2mm;color:var(--muted);margin-bottom:3mm}
     .stat .value{font-size:8.4mm;font-weight:700;color:var(--accent);white-space:nowrap}
+
     .hero-right img{width:100%;height:60mm;object-fit:cover;border-radius:4mm;border:1px solid var(--glass-border);display:block}
     .meta-card{margin-top:10mm;padding:6mm;background:var(--glass);border:1px solid var(--glass-border);border-radius:5mm;font-size:3.2mm;line-height:1.45}
+
     .features{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-top:6mm}
     .feature-card{background:var(--glass);border:1px solid var(--glass-border);border-radius:7mm;padding:8mm;min-height:36mm;display:flex;flex-direction:column;justify-content:flex-start}
     .feature-card h3{font-size:4.6mm;margin-bottom:3mm}
     .feature-card p{font-size:3.6mm;color:var(--muted);line-height:1.45}
+
+    /* PAGE 2 layout */
     .chart-and-summary { display:flex; gap:16mm; align-items:flex-start; }
     .chart-column { flex: 1 1 60%; }
     .summary-column { flex: 1 1 40%; min-width:90mm; }
@@ -480,13 +522,24 @@ def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] 
     .chart-img{width:100%;height:60mm;border-radius:8mm;border:1px solid var(--divider);box-shadow:0 4mm 16mm rgba(0,0,0,0.5);display:block;object-fit:cover}
     .ai-summary-full{background:rgba(255,255,255,0.04);border:1px solid var(--divider);border-radius:8mm;padding:12mm;font-size:4.1mm;line-height:1.56;backdrop-filter:blur(6px);height:100%;box-sizing:border-box;overflow:hidden}
     .ai-summary-full strong{font-size:5.2mm;color:var(--accent);display:block;margin-bottom:8mm}
-    .page:first-of-type .footer { display:none; }
+
     img{display:block;max-width:100%;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact;image-rendering:-webkit-optimize-contrast;page-break-inside:avoid}
     .glass, .stat, .feature-card, .ai-summary-full{page-break-inside:avoid}
     @media print { body{padding:0} .page{box-shadow:none;margin:0} }
-  </style>
+    """
+
+    # ------------------------------------------------------------------------
+    html = f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>CarbonSight Scheduler – Report</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');</style>
+  <style>{css}</style>
 </head>
 <body>
+
 <!-- PAGE 1 -->
 <div class="page">
   <div class="content">
@@ -495,37 +548,53 @@ def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] 
         <div class="logo">CARBONSIGHT SCHEDULER</div>
         <div>Solutions | About Us | Blog | Support</div>
       </div>
+
       <div class="hero">
         <div class="glass">
           <div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
           <div class="sub">Precision scheduling aligned to carbon intensity and spot market efficiency.</div>
+
           <div class="stats">
-            <div class="stat"><div class="label">Financial<br>Savings</div><div class="value">£{{saved_money}}</div></div>
-            <div class="stat"><div class="label">CO₂<br>Reduction</div><div class="value">{{reduced_co2}} kg</div></div>
-            <div class="stat"><div class="label">Optimisation<br>Score</div><div class="value">{{score}}/1.0</div></div>
+            <div class="stat">
+              <div class="label">Financial<br/>Savings</div>
+              <div class="value">{saved_money}</div>
+            </div>
+            <div class="stat">
+              <div class="label">CO₂<br/>Reduction</div>
+              <div class="value">{co2_reduced}</div>
+            </div>
+            <div class="stat">
+              <div class="label">Optimisation<br/>Score</div>
+              <div class="value">{score_fmt}/1.0</div>
+            </div>
           </div>
         </div>
+
         <div class="hero-right">
-          <img crossorigin="anonymous" referrerpolicy="no-referrer" src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop&auto=format" alt="Data Center">
+          <img class="hero-img" src="assets/hero-datacenter.jpg" alt="Data Center"/>
           <div class="meta-card">
-            <strong style="font-size:3.8mm;">Deployment Meta</strong><br>
-            Company: {{company}} • Region: {{region}} • Latency: {{latency}} ms<br>
-            Workload: {{workload}} • GPU Hours: {{gpu_hours}} • CI: {{ci}} gCO₂e/kWh<br>
-            Last Updated: {{date}}
+            <h4 style="margin:0 0 3mm;font-size:3.8mm;">Deployment Meta</h4>
+            <div class="meta">Company: {company} • Region: {region_loc} • Latency: {latency_ms} ms</div>
+            <div class="meta">Workload: {workload} • GPU Hours: {gpu_hours} • CI: {carbon_intensity_fmt} gCO₂e/kWh</div>
+            <div class="meta">Last Updated: {last_updated}</div>
           </div>
         </div>
       </div>
+
       <div class="features">
         <div class="feature-card">
           <h3>Carbon-Aware Orchestration</h3>
           <p>Dynamically shifts workloads to lower carbon regions and optimises for spot pricing.</p>
         </div>
+
         <div class="feature-card">
           <h3>Operator Experience</h3>
           <p>Visual scheduling, proactive insights and real-time alerts.</p>
         </div>
       </div>
     </div>
+
+    <!-- footer placeholder (hidden on page 1 via CSS) -->
     <div class="footer" aria-hidden="true">
       <div class="brand">
         <div style="font-weight:700;">CARBONSIGHT SCHEDULER</div>
@@ -535,8 +604,10 @@ def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] 
       <div><h5>Company</h5><ul><li>About</li><li>Blog</li><li>Careers</li></ul></div>
       <div><h5>Connect</h5><div class="social"><div class="dot">Instagram</div><div class="dot">LinkedIn</div><div class="dot">Github</div></div></div>
     </div>
+
   </div>
 </div>
+
 <!-- PAGE 2 -->
 <div class="page">
   <div class="content">
@@ -544,59 +615,46 @@ def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] 
       <div style="text-align:center;margin-bottom:8mm;">
         <h2 style="font-size:6.5mm;color:var(--accent);font-weight:700;margin:0;">Sustainability Impact Report</h2>
       </div>
+
       <div class="chart-and-summary">
         <div class="chart-column">
-          <div class="chart-title">Run Comparison: Savings & Emissions</div>
-          {{chart_image}}
+          <div class="chart-title">Run Comparison: Savings &amp; Emissions</div>
+          {chart_img_html}
         </div>
+
         <div class="summary-column">
           <div class="ai-summary-full">
             <strong>Sustainability Impact Summary</strong>
-            {{summary}}
+            {summary_html}
+            <br/><br/>
+            Crucially, these sustainability gains were achieved while maintaining optimal performance and negligible latency impact for our critical inference tasks. Test Corp remains dedicated to pioneering environmentally responsible practices, driving both ecological benefits and operational efficiency.
           </div>
         </div>
       </div>
     </div>
+
     <div class="footer">
       <div class="brand">
         <div style="font-weight:700;">CARBONSIGHT SCHEDULER</div>
         <div style="font-size:3.2mm;color:var(--muted);margin-top:4px">Smarter AI. Lower Cost. Less Carbon.</div>
       </div>
+
       <div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li><li>Cost Insights</li></ul></div>
+
       <div><h5>Company</h5><ul><li>About</li><li>Blog</li><li>Careers</li></ul></div>
+
       <div><h5>Connect</h5><div class="social"><div class="dot">Instagram</div><div class="dot">LinkedIn</div><div class="dot">Github</div></div></div>
+
       <div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
     </div>
   </div>
 </div>
+
 </body>
-</html>"""
+</html>
+"""
 
-    # Replace placeholders
-    saved_money = f"£{metrics.get('saved_money', 0):,.0f}".replace(",", " ")
-    reduced_co2 = f"{metrics.get('reduced_emissions_kg_co2', 0):,.0f}".replace(",", " ")
-    score = f"{metrics.get('score', 0):.2f}"
-    ci = f"{metrics.get('carbon_intensity_gco2_kwh', 0):.1f}"
-    latency = f"{metrics.get('latency_ms', 0):.0f}"
-
-    html = html.replace("{{saved_money}}", saved_money)
-    html = html.replace("{{reduced_co2}}", reduced_co2)
-    html = html.replace("{{score}}", score)
-    html = html.replace("{{company}}", metrics.get("company_name", "Test Corp"))
-    html = html.replace("{{region}}", metrics.get("region_location", "EU (Stockholm)"))
-    html = html.replace("{{latency}}", latency)
-    html = html.replace("{{workload}}", metrics.get("workload_type", "inference").title())
-    html = html.replace("{{gpu_hours}}", f"{metrics.get('gpu_hours', 0):,.0f}".replace(",", " "))
-    html = html.replace("{{ci}}", ci)
-    html = html.replace("{{date}}", datetime.now().strftime("%Y-%m-%d"))
-    html = html.replace("{{summary}}", (summary or "").replace("\n", "<br>"))
-
-    # Insert chart (you can keep QuickChart or your PNG)
-    chart_url = f"https://quickchart.io/chart?c={metrics.get('chart_quickchart_url', 'YOUR_DEFAULT_CHART')}&backgroundColor=%230b0b0b&w=1200&h=500"
-    chart_img = f'<img class="chart-img" src="{chart_url}" alt="Chart">'
-    html = html.replace("{{chart_image}}", chart_img)
-
-    return {"html": html, "css": ""}  # css is already inside
+    return {"html": html, "css": css.strip()}
 
 
 
@@ -723,7 +781,7 @@ def calculate():
         # ------------------------------------------------------------------- #
         # === AI SUMMARY – GEMINI ONLY ======================================= #
         # ------------------------------------------------------------------- #
-        summary = "AI summary temporarily unavailable."
+        summary  = "AI summary temporarily unavailable."
         ai_error = None
 
         gemini_key = os.getenv("GEMINI_API_KEY")
@@ -757,26 +815,25 @@ def calculate():
             except Exception as e:
                 ai_error = str(e)
                 log.warning(f"Gemini failed: {e}")
-
+                
         # ------------------------------------------------------------------- #
         # === CHART + PDF ===
         # ------------------------------------------------------------------- #
         artifacts_dir = ensure_artifacts_dir()
-        run_id = uuid.uuid4().hex[:12]
-        pdf_path = os.path.join(artifacts_dir, f"{run_id}_report.pdf")
+        run_id        = uuid.uuid4().hex[:12]
+        chart_path    = os.path.join(artifacts_dir, f"{run_id}_chart.png")
+        pdf_path      = os.path.join(artifacts_dir, f"{run_id}_report.pdf")
 
-        # create 3 charts (chart_base -> artifacts/<runid>_chart)
+        # create 3 charts
         chart_base = os.path.join(artifacts_dir, f"{run_id}_chart")
         chart_files = create_charts(metrics, chart_base)    # returns list of 3 files
 
-        # create PDF; create_pdf expects chart_files list
-        create_pdf("Report", metrics, chart_files, pdf_path, summary)
+        # create PDF; create_pdf now expects chart_files list (so update create_pdf accordingly)
+    create_pdf("Report", metrics, chart_files, pdf_path, summary)
 
-        # expose first chart for quick preview; pdf url for download
-        # chart_files typically: <runid>_chart_cost.png, _emissions.png, _radar.png
-        chart_preview_name = os.path.basename(chart_files[0]) if chart_files else f"{run_id}_chart_cost.png"
-        chart_url = f"/artifact/{chart_preview_name}"
-        pdf_url = f"/artifact/{run_id}_report.pdf"
+
+        chart_url = f"/artifact/{run_id}_chart.png"
+        pdf_url   = f"/artifact/{run_id}_report.pdf"
 
         return jsonify({
             "ok": True,
@@ -790,7 +847,6 @@ def calculate():
     except Exception as e:
         log.exception("Error")
         return jsonify({"ok": False, "error": "internal_error"}), 500
-
 
 
 @app.get("/artifact/<path:filename>")
