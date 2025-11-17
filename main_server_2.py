@@ -515,13 +515,19 @@ def _build_pdf_html(metrics: Dict, chart_count: int = 0, summary: Optional[str] 
     .feature-card p{font-size:3.6mm;color:var(--muted);line-height:1.45}
 
     /* PAGE 2 layout */
-    .chart-and-summary { display:flex; gap:16mm; align-items:flex-start; }
-    .chart-column { flex: 1 1 60%; }
-    .summary-column { flex: 1 1 40%; min-width:90mm; }
-    .chart-title{font-size:5.2mm;color:var(--muted);margin-bottom:10mm;font-weight:600;text-align:left; padding-left:6mm}
-    .chart-img{width:100%;height:60mm;border-radius:8mm;border:1px solid var(--divider);box-shadow:0 4mm 16mm rgba(0,0,0,0.5);display:block;object-fit:cover}
-    .ai-summary-full{background:rgba(255,255,255,0.04);border:1px solid var(--divider);border-radius:8mm;padding:12mm;font-size:4.1mm;line-height:1.56;backdrop-filter:blur(6px);height:100%;box-sizing:border-box;overflow:hidden}
-    .ai-summary-full strong{font-size:5.2mm;color:var(--accent);display:block;margin-bottom:8mm}
+.chart-and-summary { display:flex; gap:16mm; align-items:flex-start; }
+.chart-column { flex: 1 1 60%; }
+.summary-column { flex: 1 1 40%; min-width:90mm; }
+.chart-title{font-size:5.2mm;color:var(--muted);margin-bottom:10mm;font-weight:600;text-align:left; padding-left:6mm}
+/* reduce chart height slightly so the ai summary has room */
+.chart-img{width:100%;height:52mm;border-radius:8mm;border:1px solid var(--divider);box-shadow:0 4mm 16mm rgba(0,0,0,0.5);display:block;object-fit:cover}
+/* allow summary to fill remaining height (avoid cutting) */
+.ai-summary-full{background:rgba(255,255,255,0.04);border:1px solid var(--divider);border-radius:8mm;padding:10mm;font-size:4.1mm;line-height:1.56;backdrop-filter:blur(6px);height:100%;box-sizing:border-box;overflow:visible}
+.ai-summary-full strong{font-size:5.2mm;color:var(--accent);display:block;margin-bottom:8mm}
+
+/* hide the footer on page 1 (shows only on page 2) */
+.page:first-of-type .footer { display: none; }
+
 
     img{display:block;max-width:100%;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact;image-rendering:-webkit-optimize-contrast;page-break-inside:avoid}
     .glass, .stat, .feature-card, .ai-summary-full{page-break-inside:avoid}
