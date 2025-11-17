@@ -1,12 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>CarbonSight Live Preview</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <title>CarbonSight Live PDF Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    /* ←←← PASTE YOUR ENTIRE CSS FROM _build_pdf_html HERE ←←← */
-    css = """
     @page { size: 297mm 210mm; margin: 0; }
     :root {
       --bg: #0b0b0b;
@@ -17,169 +15,142 @@
       --accent: #7BE200;
       --footer: #0e0e0e;
       --divider: rgba(255,255,255,0.08);
-      --font: 'Space Grotesk', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     }
-    * { box-sizing: border-box; color: var(--text) !important; margin:0; padding:0; }
-    html, body { background:var(--bg); font-family:var(--font); width:297mm; height:210mm; }
-
-    .page      { width:297mm; height:210mm; display:flex; flex-direction:column; }
-    .container { padding:12mm 16mm 0 16mm; flex:1; display:flex; flex-direction:column; }
-    .nav       { display:flex; justify-content:space-between; margin-bottom:6mm; font-size:3.6mm; }
-    .logo .text { font-weight:700; letter-spacing:0.4px; }
-
-    /* ───── HERO ───── */
-    .hero      { display:grid; grid-template-columns:1.4fr 1fr; gap:10mm; margin-bottom:8mm; }
-    .glass     { background:var(--glass); border:1px solid var(--glass-border); border-radius:5mm; padding:10mm; }
-    .headline  { font-size:15mm; font-weight:700; line-height:1.1; margin-bottom:4mm; }
-    .sub       { font-size:4.4mm; color:var(--muted); margin-bottom:6mm; }
-
-    /* ───── STATS (centred, two-line labels) ───── */
-    .stats     { display:grid; grid-template-columns:repeat(3,1fr); gap:5mm; }
-    .stat      { padding:4mm 2mm; border:1px solid var(--divider); border-radius:4mm; text-align:center; background:rgba(255,255,255,0.015); }
-    .stat .label { font-size:3.2mm; line-height:1.2; margin-bottom:1.5mm; }
-    .stat .value { font-size:6.5mm; font-weight:600; color:var(--accent); line-height:1.1; }
-
-    /* ───── HERO RIGHT – image first, meta card underneath ───── */
-    .hero-right { display:flex; flex-direction:column; height:70mm; }
-    .hero-img   { flex:1; width:100%; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); }
-    .meta-card  {
-      margin-top:30mm; padding:5mm; background:var(--glass);
-      border:1px solid var(--glass-border); border-radius:4mm;
-      font-size:3.3mm; line-height:1.4;
+    * { box-sizing: border-box; margin:0; padding:0; color: var(--text)!important; }
+    body { background:#000; font-family: 'Space Grotesk', sans-serif; padding:30px 0; }
+    .page {
+      width: 297mm;
+      height: 210mm;
+      background: var(--bg);
+      margin: 0 auto;
+      box-shadow: 0 0 30px rgba(0,0,0,0.8);
+      overflow: hidden;
+      position: relative;
     }
+    .container { padding:12mm 16mm 0 16mm; height: calc(210mm - 50px); display: flex; flex-direction: column; }
+    .nav { display:flex; justify-content:space-between; margin-bottom:6mm; font-size:3.6mm; font-weight:600; }
+    .hero { display:grid; grid-template-columns:1.4fr 1fr; gap:10mm; margin-bottom:8mm; }
+    .glass { background:var(--glass); border:1px solid var(--glass-border); border-radius:5mm; padding:10mm; }
+    .headline { font-size:15mm; font-weight:700; line-height:1.1; margin-bottom:4mm; }
+    .sub { font-size:4.4mm; color:var(--muted); margin-bottom:6mm; }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6mm; margin-top:8mm; }
+    .stat { padding:5mm; border:1px solid var(--divider); border-radius:5mm; text-align:center; background:rgba(255,255,255,0.02); }
+    .stat .label { font-size:3.3mm; color:var(--muted); margin-bottom:2mm; }
+    .stat .value { font-size:7.2mm; font-weight:700; color:var(--accent); }
+    .hero-right img { width:100%; height:70mm; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); }
+    .meta-card { margin-top:12mm; padding:6mm; background:var(--glass); border:1px solid var(--glass-border); border-radius:4mm; font-size:3.3mm; line-height:1.5; }
+    .features { display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin-bottom:6mm; }
+    .feature-img { width:100%; height:38mm; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); margin-top:4mm; }
 
-    /* ───── FEATURES ───── */
-    .features   { display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin-bottom:6mm; }
-    .feature-img { width:100%; height:auto; max-height:38mm; object-fit:cover; border-radius:4mm; margin-top:4mm; border:1px solid var(--glass-border); }
+    /* CHART + AI SUMMARY SIDE-BY-SIDE */
+    .chart-and-summary { 
+      display: grid; 
+      grid-template-columns: 1.1fr 1fr; 
+      gap: 12mm; 
+      margin: 10mm 16mm 8mm 16mm; 
+      align-items: start; 
+    }
+    .chart-section { text-align:center; }
+    .chart-title { font-size:4.8mm; color:var(--muted); margin-bottom:6mm; font-weight:600; }
+    .chart-img { width:100%; max-width:195mm; height:auto; border-radius:6mm; border:1px solid var(--divider); box-shadow:0 4mm 12mm rgba(0,0,0,0.5); }
 
-    /* ───── CHART ───── */
-    .chart-section { margin:10mm 20mm 8mm 20mm; flex-shrink:0; }
-    .chart-title   { font-size:4.8mm; color:var(--muted); margin-bottom:3mm; }
-    .chart-img     { width:100%; max-width:220mm; height:auto; border-radius:6mm; border:1px solid var(--divider); }
-
-        /* ───── AI SUMMARY ───── */
-    .ai-summary { 
-      margin-top: 6mm;
-      padding: 5mm;
+    .ai-summary-box {
+      background: rgba(255,255,255,0.03);
       border: 1px solid var(--divider);
-      border-radius: 4mm;
-      background: rgba(255,255,255,0.015);
-      font-size: 3.4mm;           /* slightly smaller = safer */
-      line-height: 1.38;
-      max-height: 38mm;           /* reduced a little */
-      overflow: hidden;           /* changed from auto → hidden */
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 9;      /* max 9 lines */
-      -webkit-box-orient: vertical;
-      word-wrap: break-word;
-      hyphens: auto;              /* helps long words */
+      border-radius: 6mm;
+      padding: 12mm;
+      font-size: 3.9mm;
+      line-height: 1.5;
+      backdrop-filter: blur(4px);
     }
 
-    /* ───── FOOTER ───── */
-    .footer    { background:var(--footer); padding:5mm 16mm; border-top:1px solid var(--divider);
-                 display:grid; grid-template-columns:1.2fr 1fr 1fr 1fr; gap:8mm; font-size:3.5mm; flex-shrink:0; }
-    .copyright { text-align:center; padding:3mm 0; font-size:3.2mm; color:var(--muted);
-                 border-top:1px solid var(--divider); margin:0 16mm; }
-    """
-
-    # ------------------------------------------------------------------------
-    @page { size: 297mm 210mm; margin: 0; }
-    :root { --bg: #0b0b0b; --accent: #7BE200; /* etc */ }
-    /* ... all your CSS ... */
+    .footer {
+      background:var(--footer);
+      padding:5mm 16mm;
+      border-top:1px solid var(--divider);
+      display:grid;
+      grid-template-columns:1.2fr 1fr 1fr 1fr;
+      gap:8mm;
+      font-size:3.5mm;
+      margin-top: auto;
+    }
+    .copyright { text-align:center; padding:3mm 0; font-size:3.2mm; color:var(--muted); border-top:1px solid var(--divider); margin:0 16mm; }
   </style>
 </head>
 <body>
-  <!-- ←←← PASTE THE ENTIRE HTML FROM YOUR _build_pdf_html function here ←←← -->
-  html = f"""<!doctype html>
-<html><head><meta charset="utf-8"><title>Report</title>
-<style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');</style>
-<style>{css}</style></head><body>
+
 <div class="page">
   <div class="container">
-    <!-- NAV -->
     <div class="nav">
       <div class="logo"><div class="text">CARBONSIGHT SCHEDULER</div></div>
-      <div class="nav-menu">Solutions | About Us | Blog | Support</div>
+      <div>Solutions | About Us | Blog | Support</div>
     </div>
 
-    <!-- HERO -->
     <div class="hero">
-      <div class="glass hero-left">
+      <div class="glass">
         <div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
         <div class="sub">Precision scheduling aligned to carbon intensity and spot market efficiency.</div>
-
-        <!-- STATS – two-line, perfectly centred -->
         <div class="stats">
           <div class="stat">
             <div class="label">Financial<br>Savings</div>
-            <div class="value">£36,000</div>
+            <div class="value">£36,900</div>
           </div>
           <div class="stat">
             <div class="label">CO₂<br>Reduction</div>
-            <div class="value"><span style="white-space:nowrap;">9,567 kg</span></div>
+            <div class="value">9,520 kg</div>
           </div>
           <div class="stat">
             <div class="label">Optimisation<br>Score</div>
             <div class="value">0.79/1.0</div>
           </div>
         </div>
-
-        <div class="ai-summary">"Test Corp is proud to report significant sustainability achievements for its 100,000 GPU\nhours of inference workload in the EU (Stockholm) region. Through strategic resource\noptimization, including the effective utilization of spot instances, we realized\nsubstantial financial savings of £36,900.  This initiative also delivered a remarkable CO₂\nreduction of 9,520 kg compared to baseline operations, demonstrating our commitment to\nenvironmental stewardship. Our infrastructure now operates with an impressive carbon\nintensity of just 24.0 gCO₂e/kWh, reflected in an optimization score of 0.79/1.0.\nCrucially, these sustainability gains were achieved while maintaining optimal performance\nand negligible latency impact for our critical inference tasks. Test Corp remains\ndedicated to pioneering environmentally responsible practices, driving both ecological\nbenefits and operational efficiency.</div>
       </div>
 
-      <!-- RIGHT SIDE – image first, meta card below -->
       <div class="hero-right">
-        <img class="hero-img" src="https://www.shutterstock.com/image-photo/data-centers-filled-rows-servers-blinking-2502153963" alt="Data Center"/>
+        <img src="https://images.unsplash.com/photo-1625314885476-977577e2f2bc?w=1200&h=800&fit=crop" alt="Data Center">
         <div class="meta-card">
-          <h4 style="margin:0 0 3mm;font-size:3.8mm;">Deployment Meta</h4>
-          <div class="meta">Company: {company} • Region: {region_loc} • Latency: {latency_ms} ms</div>
-          <div class="meta">Workload: {workload} • GPU Hours: {gpu_hours} • CI: {carbon_intensity_fmt} gCO₂e/kWh</div>
-          <div class="meta">Last Updated: {last_updated}</div>
+          <strong>Deployment Meta</strong><br>
+          Company: Test Corp • Region: EU (Stockholm) • Latency: 78 ms<br>
+          Workload: inference • GPU Hours: 100,000 • CI: 24.0 gCO₂e/kWh<br>
+          Last Updated: 2025-11-17
         </div>
       </div>
     </div>
 
-    <!-- FEATURES -->
     <div class="features">
-      <div class="glass feature">
+      <div class="glass">
         <h3>Carbon-Aware Orchestration</h3>
         <p>Dynamically shifts workloads to lower carbon regions and optimises for spot pricing.</p>
       </div>
-      <div class="glass feature">
+      <div class="glass">
         <h3>Operator Experience</h3>
         <p>Visual scheduling, proactive insights and real-time alerts.</p>
-        <img class="feature-img" src="https://www.shutterstock.com/image-photo/data-centers-filled-rows-servers-blinking-2502153963" alt="UI"/>
+        <img class="feature-img" src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop" alt="UI">
       </div>
     </div>
 
-        <!-- CHART + AI SUMMARY SIDE-BY-SIDE -->
-    <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 12mm; margin: 10mm 16mm 8mm 16mm; align-items: start;">
-      
-      <!-- Left: Smaller Chart -->
+    <!-- CHART + AI SUMMARY SIDE BY SIDE -->
+    <div class="chart-and-summary">
       <div class="chart-section">
         <div class="chart-title">Run Comparison: Savings and Emissions</div>
-        {chart_img_html}
+        <img class="chart-img" src="https://quickchart.io/chart?c={type:'bar',data:{labels:['Financial%20Savings','CO%E2%82%82%20Reduced'],datasets:[{data:[36900,9520],backgroundColor:['#7BE200','#00D4FF']}]},options:{plugins:{title:{display:true,text:'Impact%20Comparison',color:'white'}},scales:{y:{ticks:{color:'white'},grid:{color:'#333'}}}}}&backgroundColor=%230b0b0b&w=1000&h=420" alt="Chart">
       </div>
-      
-      <!-- Right: AI Summary (now full height, no overflow) -->
-      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--divider); border-radius: 6mm; padding: 10mm; font-size: 3.8mm; line-height: 1.48; backdrop-filter: blur(4px);">
-        {summary_html.replace('<br/>', '<br>')}
-      </div>
-      
-    </div>
 
-  <!-- FOOTER -->
+      <div class="ai-summary-box">
+        Test Corp is proud to report significant sustainability achievements for its 100,000 GPU hours of inference workload in the EU (Stockholm) region. Through strategic resource optimization, including the effective utilization of spot instances, we realized substantial financial savings of £36,900. This initiative also delivered a remarkable CO₂ reduction of 9,520 kg compared to baseline operations, demonstrating our commitment to environmental stewardship. Our infrastructure now operates with an impressive carbon intensity of just 24.0 gCO₂e/kWh, reflected in an optimization score of 0.79/1.0.<br><br>
+        Crucially, these sustainability gains were achieved while maintaining optimal performance and negligible latency impact for our critical inference tasks. Test Corp remains dedicated to pioneering environmentally responsible practices, driving both ecological benefits and operational efficiency.
+      </div>
+    </div>
+  </div>
+
   <div class="footer">
-    <div class="brand"><div><div style="font-weight:700;">CARBONSIGHT SCHEDULER</div><div style="font-size:3.2mm;">Smarter AI. Lower Cost. Less Carbon.</div></div></div>
-    <div><h5>Products</h5><ul><li>Scheduler</li><li>Carbon Intelligence</li><li>Cost Insights</li></ul></div>
-    <div><h5>Company</h5><ul><li>About</li><li>Blog</li><li>Careers</li></ul></div>
-    <div><h5>Connect</h5><div class="social"><div class="dot">Instagram</div><div class="dot">LinkedIn</div><div class="dot">Github</div></div></div>
+    <div><strong>CARBONSIGHT SCHEDULER</strong><br><small>Smarter AI. Lower Cost. Less Carbon.</small></div>
+    <div><strong>Products</strong><br>Scheduler · Carbon Intelligence · Cost Insights</div>
+    <div><strong>Company</strong><br>About · Blog · Careers</div>
+    <div><strong>Connect</strong><br>Instagram · LinkedIn · Github</div>
   </div>
   <div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
 </div>
-</body></html>
 
-  <div class="page"></div>
 </body>
 </html>
