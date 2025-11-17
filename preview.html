@@ -1,1 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CarbonSight Scheduler – Live PDF Preview (2 Pages)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page { size: 297mm 210mm; margin: 0; }
+    :root {
+      --bg: #0b0b0b;
+      --glass: rgba(255,255,255,0.02);
+      --glass-border: rgba(255,255,255,0.18);
+      --text: #ffffff;
+      --muted: #e0e0e0;
+      --accent: #7BE200;
+      --footer: #0e0e0e;
+      --divider: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; margin:0; padding:0; color: var(--text)!important; }
+    body { background:#000; font-family: 'Space Grotesk', sans-serif; padding:40px 0; }
+    .page {
+      width: 297mm;
+      height: 210mm;
+      background: var(--bg);
+      margin: 0 auto 40px auto;
+      box-shadow: 0 0 30px rgba(0,0,0,0.8);
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+    }
+    .container { padding:12mm 16mm 0 16mm; height: calc(210mm - 50px); display: flex; flex-direction: column; }
+    .nav { display:flex; justify-content:space-between; margin-bottom:6mm; font-size:3.6mm; font-weight:600; }
+    .hero { display:grid; grid-template-columns:1.4fr 1fr; gap:10mm; margin-bottom:8mm; }
+    .glass { background:var(--glass); border:1px solid var(--glass-border); border-radius:7mm; padding:14mm; }
+    .headline { font-size:15mm; font-weight:700; line-height:1.1; margin-bottom:4mm; }
+    .sub { font-size:4.4mm; color:var(--muted); margin-bottom:8mm; }
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:9mm; margin-top:6mm; }
+    .stat { background:rgba(255,255,255,0.04); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.12); border-radius:7mm; padding:10mm 6mm; text-align:center; display:flex; flex-direction:column; justify-content:center; min-height:38mm; }
+    .stat .label { font-size:3.4mm; color:var(--muted); margin-bottom:4mm; line-height:1.2; }
+    .stat .value { font-size:9.2mm; font-weight:700; color:var(--accent); white-space:nowrap; }
+    .hero-right img { width:100%; height:70mm; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); }
+    .meta-card { margin-top:12mm; padding:7mm; background:var(--glass); border:1px solid var(--glass-border); border-radius:5mm; font-size:3.3mm; line-height:1.5; }
+    .features { display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin-top:10mm; }
+    .feature-img { width:100%; height:38mm; object-fit:cover; border-radius:4mm; border:1px solid var(--glass-border); margin-top:4mm; }
 
+    /* PAGE 2 – CHART + AI SUMMARY SIDE BY SIDE */
+    .page2 .chart-and-summary {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 18mm;
+      padding: 20mm 16mm 10mm 16mm;
+      height: calc(210mm - 60px);
+      align-items: start;
+    }
+    .chart-title { font-size:5.2mm; color:var(--muted); margin-bottom:10mm; font-weight:600; text-align:center; }
+    .chart-img { width:100%; max-width:215mm; height:auto; border-radius:8mm; border:1px solid var(--divider); box-shadow:0 4mm 16mm rgba(0,0,0,0.5); }
+    .ai-summary-full {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--divider);
+      border-radius: 8mm;
+      padding: 18mm;
+      font-size: 4.2mm;
+      line-height: 1.58;
+      backdrop-filter: blur(6px);
+    }
+    .ai-summary-full strong {
+      font-size: 5.5mm;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 10mm;
+    }
+
+    .footer {
+      background:var(--footer);
+      padding:5mm 16mm;
+      border-top:1px solid var(--divider);
+      display:grid;
+      grid-template-columns:1.2fr 1fr 1fr 1fr;
+      gap:8mm;
+      font-size:3.5mm;
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+    }
+    .copyright { text-align:center; padding:3mm 0; font-size:3.2mm; color:var(--muted); border-top:1px solid var(--divider); margin:0 16mm; }
+  </style>
+</head>
+<body>
+
+<!-- ====================== PAGE 1 ====================== -->
+<div class="page">
+  <div class="container">
+    <div class="nav">
+      <div class="logo"><div class="text">CARBONSIGHT SCHEDULER</div></div>
+      <div>Solutions | About Us | Blog | Support</div>
+    </div>
+
+    <div class="hero">
+      <div class="glass">
+        <div class="headline">Smarter AI. Lower Cost. Less Carbon.</div>
+        <div class="sub">Precision scheduling aligned to carbon intensity and spot market efficiency.</div>
+        <div class="stats">
+          <div class="stat">
+            <div class="label">Financial<br>Savings</div>
+            <div class="value">£36,900</div>
+          </div>
+          <div class="stat">
+            <div class="label">CO₂<br>Reduction</div>
+            <div class="value">9,520 kg</div>
+          </div>
+          <div class="stat">
+            <div class="label">Optimisation<br>Score</div>
+            <div class="value">0.79/1.0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <img src="https://images.unsplash.com/photo-1625314885476-977577e2f2bc?w=1200&h=800&fit=crop&auto=format" alt="Data Center">
+        <div class="meta-card">
+          <strong style="font-size:3.8mm;">Deployment Meta</strong><br>
+          Company: Test Corp • Region: EU (Stockholm) • Latency: 78 ms<br>
+          Workload: inference • GPU Hours: 100,000 • CI: 24.0 gCO₂e/kWh<br>
+          Last Updated: 2025-11-17
+        </div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="glass">
+        <h3 style="font-size:4.8mm; margin-bottom:3mm;">Carbon-Aware Orchestration</h3>
+        <p>Dynamically shifts workloads to lower carbon regions and optimises for spot pricing.</p>
+      </div>
+      <div class="glass">
+        <h3 style="font-size:4.8mm; margin-bottom:3mm;">Operator Experience</h3>
+        <p>Visual scheduling, proactive insights and real-time alerts.</p>
+        <img class="feature-img" src="https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop&auto=format" alt="UI">
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div><strong>CARBONSIGHT SCHEDULER</strong><br><small>Smarter AI. Lower Cost. Less Carbon.</small></div>
+    <div><strong>Products</strong><br>Scheduler · Carbon Intelligence · Cost Insights</div>
+    <div><strong>Company</strong><br>About · Blog · Careers</div>
+    <div><strong>Connect</strong><br>Instagram · LinkedIn · Github</div>
+  </div>
+  <div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
+</div>
+
+<!-- ====================== PAGE 2 – CHART + AI SUMMARY ====================== -->
+<div class="page page2">
+  <div style="padding:20mm 16mm 0 16mm; text-align:center;">
+    <h2 style="font-size:6.5mm; color:var(--accent); font-weight:700; margin-bottom:12mm;">
+      Sustainability Impact Report
+    </h2>
+  </div>
+
+  <div class="chart-and-summary">
+    <!-- Left: Chart -->
+    <div style="text-align:center;">
+      <div class="chart-title">Run Comparison: Savings & Emissions</div>
+      <img class="chart-img" src="https://quickchart.io/chart?c={type:'bar',data:{labels:['Financial%20Savings','CO%E2%82%82%20Reduced'],datasets:[{data:[36900,9520],backgroundColor:['#7BE200','#00E0FF']}]},options:{plugins:{title:{display:false}},scales:{y:{ticks:{color:'white'},grid:{color:'#333'}}}}}&backgroundColor=%230b0b0b&w=1100&h=460" alt="Savings and Emissions Chart">
+    </div>
+
+    <!-- Right: Full AI Summary -->
+    <div class="ai-summary-full">
+      <strong>Sustainability Impact Summary</strong>
+      Test Corp is proud to report significant sustainability achievements for its 100,000 GPU hours of inference workload in the EU (Stockholm) region. Through strategic resource optimization, including the effective utilization of spot instances, we realized substantial financial savings of £36,900. This initiative also delivered a remarkable CO₂ reduction of 9,520 kg compared to baseline operations, demonstrating our commitment to environmental stewardship. Our infrastructure now operates with an impressive carbon intensity of just 24.0 gCO₂e/kWh, reflected in an optimization score of 0.79/1.0.<br><br>
+      Crucially, these sustainability gains were achieved while maintaining optimal performance and negligible latency impact for our critical inference tasks. Test Corp remains dedicated to pioneering environmentally responsible practices, driving both ecological benefits and operational efficiency.
+    </div>
+  </div>
+
+  <div class="footer">
+    <div><strong>CARBONSIGHT SCHEDULER</strong><br><small>Smarter AI. Lower Cost. Less Carbon.</small></div>
+    <div><strong>Products</strong><br>Scheduler · Carbon Intelligence · Cost Insights</div>
+    <div><strong>Company</strong><br>About · Blog · Careers</div>
+    <div><strong>Connect</strong><br>Instagram · LinkedIn · Github</div>
+  </div>
+  <div class="copyright">© 2025 CarbonSight Scheduler | Terms | Privacy | Cookies</div>
+</div>
+
+</body>
+</html>
